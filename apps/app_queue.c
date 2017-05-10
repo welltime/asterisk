@@ -1732,17 +1732,8 @@ struct statechange {
 */
 static int update_status(struct call_queue *q, struct member *m, const int status)
 {
-	if (m->status != status) {
-		m->status = status;
-
-		/* Remove the member from the pending members pool only when the status changes.
-		 * This is not done unconditionally because we can occasionally see multiple
-		 * device state notifications of not in use after a previous call has ended,
-		 * including after we have initiated a new call. This is more likely to
-		 * happen when there is latency in the connection to the member.
-		 */
-		pending_members_remove(m);
-	}
+	m->status = status;
+	pending_members_remove(m);
 
 	if (q->maskmemberstatus) {
 		return 0;
@@ -5108,6 +5099,7 @@ static int update_queue(struct call_queue *q, struct member *member, int callcom
 			member->membername, (long)member->lastcall);
 		ao2_unlock(q);
 	}
+	pending_members_remove(member);
 	ao2_lock(q);
 	q->callscompleted++;
 	if (callcompletedinsl) {
