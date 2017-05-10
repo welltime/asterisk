@@ -100,6 +100,8 @@ struct ast_variable {
 typedef struct ast_config *config_load_func(const char *database, const char *table, const char *configfile, struct ast_config *config, struct ast_flags flags, const char *suggested_include_file, const char *who_asked);
 typedef struct ast_variable *realtime_var_get(const char *database, const char *table, va_list ap);
 typedef struct ast_config *realtime_multi_get(const char *database, const char *table, va_list ap);
+typedef struct ast_variable *realtime_mcn_get(const char *database, const char *table, va_list ap);
+typedef struct ast_config *realtime_multi_mcn_get(const char *database, const char *table, va_list ap);
 typedef int realtime_update(const char *database, const char *table, const char *keyfield, const char *entity, va_list ap);
 typedef int realtime_update2(const char *database, const char *table, va_list ap);
 typedef int realtime_store(const char *database, const char *table, va_list ap);
@@ -123,6 +125,8 @@ struct ast_config_engine {
 	config_load_func *load_func;
 	realtime_var_get *realtime_func;
 	realtime_multi_get *realtime_multi_func;
+	realtime_mcn_get *realtime_mcn_func;
+	realtime_multi_mcn_get *realtime_multi_mcn_func;
 	realtime_update *update_func;
 	realtime_update2 *update2_func;
 	realtime_store *store_func;
@@ -307,6 +311,7 @@ int ast_category_exist(const struct ast_config *config, const char *category_nam
  */
 struct ast_variable *ast_load_realtime(const char *family, ...) attribute_sentinel;
 struct ast_variable *ast_load_realtime_all(const char *family, ...) attribute_sentinel;
+struct ast_variable *ast_load_realtime_mcn(const char *family, ...) attribute_sentinel;
 
 /*!
  * \brief Release any resources cached for a realtime family
@@ -378,6 +383,7 @@ int ast_realtime_require_field(const char *family, ...) attribute_sentinel;
  * order to preserve cross-platform compatibility.
  */
 struct ast_config *ast_load_realtime_multientry(const char *family, ...) attribute_sentinel;
+struct ast_config *ast_load_realtime_mcn_multientry(const char *family, ...) attribute_sentinel;
 
 /*!
  * \brief Update realtime configuration

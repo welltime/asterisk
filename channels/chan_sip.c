@@ -5148,7 +5148,7 @@ static struct ast_variable *get_insecure_variable_from_sippeers(const char *colu
 {
 	struct ast_config *peerlist;
 	struct ast_variable *var = NULL;
-	if ((peerlist = ast_load_realtime_multientry("sippeers", column, value, "insecure LIKE", "%port%", SENTINEL))) {
+	if ((peerlist = ast_load_realtime_mcn_multientry("sippeers", column, value, "insecure LIKE", "%port%", SENTINEL))) {
 		if ((var = get_insecure_variable_from_config(peerlist))) {
 			/* Must clone, because var will get freed along with
 			 * peerlist. */
@@ -5171,12 +5171,12 @@ static struct ast_variable *get_insecure_variable_from_sipregs(const char *colum
 	char *regscat;
 	const char *regname;
 
-	if (!(regs = ast_load_realtime_multientry("sipregs", column, value, SENTINEL))) {
+	if (!(regs = ast_load_realtime_mcn_multientry("sipregs", column, value, SENTINEL))) {
 		return NULL;
 	}
 
 	/* Load *all* peers that are probably insecure=port */
-	if (!(peers = ast_load_realtime_multientry("sippeers", "insecure LIKE", "%port%", SENTINEL))) {
+	if (!(peers = ast_load_realtime_mcn_multientry("sippeers", "insecure LIKE", "%port%", SENTINEL))) {
 		ast_config_destroy(regs);
 		return NULL;
 	}
@@ -5324,14 +5324,14 @@ static int realtime_peer_by_addr(const char **name, struct ast_sockaddr *addr, c
 	if (!ast_strlen_zero(callbackexten) && (*var = ast_load_realtime("sippeers", "host", ipaddr, "port", portstring, "callbackextension", callbackexten, SENTINEL))) {
 		;
 	/* Check for fixed IP hosts */
-	} else if ((*var = ast_load_realtime("sippeers", "host", ipaddr, "port", portstring, SENTINEL))) {
+	} else if ((*var = ast_load_realtime_mcn("sippeers", "host", ipaddr, "port", portstring, SENTINEL))) {
 		;
 	/* Check for registered hosts (in sipregs) */
 	} else if (varregs && (*varregs = ast_load_realtime("sipregs", "ipaddr", ipaddr, "port", portstring, SENTINEL)) &&
 			(*var = realtime_peer_get_sippeer_helper(name, varregs))) {
 		;
 	/* Check for registered hosts (in sippeers) */
-	} else if (!varregs && (*var = ast_load_realtime("sippeers", "ipaddr", ipaddr, "port", portstring, SENTINEL))) {
+	} else if (!varregs && (*var = ast_load_realtime_mcn("sippeers", "ipaddr", ipaddr, "port", portstring, SENTINEL))) {
 		;
 	/* We couldn't match on ipaddress and port, so we need to check if port is insecure */
 	} else if ((*var = get_insecure_variable_from_sippeers("host", ipaddr))) {

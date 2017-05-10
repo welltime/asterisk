@@ -1184,6 +1184,8 @@ struct ast_config_include {
 typedef struct ast_config *config_load_func(const char *database, const char *table, const char *configfile, struct ast_config *config, int withcomments, const char *suggested_include_file);
 typedef struct ast_variable *realtime_var_get(const char *database, const char *table, va_list ap);
 typedef struct ast_config *realtime_multi_get(const char *database, const char *table, va_list ap);
+typedef struct ast_variable *realtime_mcn_get(const char *database, const char *table, va_list ap);
+typedef struct ast_config *realtime_multi_mcn_get(const char *database, const char *table, va_list ap);
 typedef int realtime_update(const char *database, const char *table, const char *keyfield, const char *entity, va_list ap);
 
 /*! \brief Configuration engine structure, used to define realtime drivers */
@@ -1192,6 +1194,8 @@ struct ast_config_engine {
 	config_load_func *load_func;
 	realtime_var_get *realtime_func;
 	realtime_multi_get *realtime_multi_func;
+	realtime_mcn_get *realtime_mcn_func;
+	realtime_multi_mcn_get *realtime_multi_mcn_func;
 	realtime_update *update_func;
 	struct ast_config_engine *next;
 };
