@@ -995,6 +995,7 @@ enum {
 	QUEUE_STRATEGY_FEWESTCALLS,
 	QUEUE_STRATEGY_RANDOM,
 	QUEUE_STRATEGY_RRMEMORY,
+	QUEUE_STRATEGY_XRRMEMORY,
 	QUEUE_STRATEGY_LINEAR,
 	QUEUE_STRATEGY_WRANDOM,
 	QUEUE_STRATEGY_RRORDERED,
@@ -1021,7 +1022,8 @@ static const struct strategy {
 	{ QUEUE_STRATEGY_LEASTRECENT, "leastrecent" },
 	{ QUEUE_STRATEGY_FEWESTCALLS, "fewestcalls" },
 	{ QUEUE_STRATEGY_RANDOM, "random" },
-	{ QUEUE_STRATEGY_RRMEMORY, "rrmemory" },
+	{ QUEUE_STRATEGY_XRRMEMORY, "rrmemory" },
+	{ QUEUE_STRATEGY_RRMEMORY, "xrrmemory" },
 	{ QUEUE_STRATEGY_RRMEMORY, "roundrobin" },
 	{ QUEUE_STRATEGY_LINEAR, "linear" },
 	{ QUEUE_STRATEGY_WRANDOM, "wrandom"},
@@ -1068,6 +1070,8 @@ static char *app_ql = "QueueLog" ;
 
 /*! \brief Persistent Members astdb family */
 static const char * const pm_family = "Queue/PersistentMembers";
+
+#define MAX_QUEUE_PENALTY 11
 
 /*! \brief queues.conf [general] option */
 static int queue_persistent_members = 0;
@@ -1150,6 +1154,7 @@ struct callattempt {
 	time_t lastcall;
 	struct call_queue *lastqueue;
 	struct member *member;
+	int penalty;
 	/*! Saved connected party info from an AST_CONTROL_CONNECTED_LINE. */
 	struct ast_party_connected_line connected;
 	/*! TRUE if an AST_CONTROL_CONNECTED_LINE update was saved to the connected element. */
@@ -1163,6 +1168,10 @@ struct callattempt {
 	struct ast_aoc_decoded *aoc_s_rate_list;
 };
 
+struct call_member {
+	char interface[80];
+	struct call_member *next;
+};
 
 struct queue_ent {
 	struct call_queue *parent;             /*!< What queue is our parent */
@@ -1192,6 +1201,8 @@ struct queue_ent {
 	AST_LIST_HEAD_NOLOCK(,penalty_rule) qe_rules; /*!< Local copy of the queue's penalty rules */
 	struct penalty_rule *pr;               /*!< Pointer to the next penalty rule to implement */
 	struct queue_ent *next;                /*!< The next queue entry */
+	struct call_member *called_members;    /*!< The calling members entry */
+	int last_penalty;                      /*!< Last penalty in XRRMEMORY strategy */
 };
 
 struct member {
@@ -1344,6 +1355,8 @@ struct call_queue {
 
 	/* Queue strategy things */
 	int rrpos;                          /*!< Round Robin - position */
+	int xrrpos[MAX_QUEUE_PENALTY+1];            /*!< Extended Round Robin - positions */
+	unsigned int xwrapped[MAX_QUEUE_PENALTY+1]; /*!< Extended Round Robin - positions */
 	int memberdelay;                    /*!< Seconds to delay connecting member to caller */
 	int autofill;                       /*!< Ignore the head call status and ring an available agent */
 
@@ -3915,6 +3928,21 @@ static int ring_entry(struct queue_ent *qe, struct callattempt *tmp, int *busies
 	return 1;
 }
 
+/*! \brief clear called members list for queue entry */
+static void clear_called_members(struct queue_ent *qe)
+{
+	struct call_member *call, *next;
+	for(call = qe->called_members; call; )
+	{
+		next = call->next;
+		call->next = NULL;
+		free(call);
+		call = next;
+	}
+	qe->last_penalty = 0;
+	qe->called_members = NULL;
+}
+
 /*! \brief find the entry with the best metric, or NULL */
 static struct callattempt *find_best(struct callattempt *outgoing)
 {
@@ -3926,6 +3954,57 @@ static struct callattempt *find_best(struct callattempt *outgoing)
 			(!best || cur->metric < best->metric)) {		/* We haven't found one yet, or it's better */
 			best = cur;
 		}
+	}
+
+	return best;
+}
+
+static struct callattempt *find_best_penalty(struct callattempt *outgoing, int penalty)
+{
+	struct callattempt *best = NULL, *cur;
+
+	for (cur = outgoing; cur; cur = cur->q_next) {
+		if (cur->stillgoing &&						/* Not already done */
+				!cur->chan &&					/* Isn't already going */
+				cur->penalty == penalty &&
+				(!best || cur->metric < best->metric)) {	/* We haven't found one yet, or it's better */
+			best = cur;
+		}
+	}
+
+	return best;
+}
+
+static struct callattempt *find_best_not_called(struct callattempt *outgoing, struct queue_ent *qe)
+{
+	struct callattempt *best = NULL, *cur;
+	struct call_member *call;
+	int callfound;
+
+	for(;;) {
+		for (cur = outgoing; cur; cur = cur->q_next) {
+			if (cur->stillgoing &&						/* Not already done */
+					!cur->chan &&					/* Isn't already going */
+					(!best || cur->metric < best->metric)) {	/* We haven't found one yet, or it's better */
+
+				/* Scan queue entry called members */
+				callfound = 0;
+				for(call = qe->called_members; call; call = call->next) {
+					if (!strcasecmp(cur->interface, call->interface)) {
+						callfound = 1;
+						break;
+					}
+				}
+				if(callfound)
+					continue;
+				best = cur;
+			}
+		}
+		if (!best && qe->called_members) {
+			clear_called_members(qe);
+			continue;
+		}
+		break;
 	}
 
 	return best;
@@ -3946,7 +4025,12 @@ static int ring_one(struct queue_ent *qe, struct callattempt *outgoing, int *bus
 	int ret = 0;
 
 	while (ret == 0) {
-		struct callattempt *best = find_best(outgoing);
+		struct callattempt *best;
+		if(qe->parent->strategy == QUEUE_STRATEGY_XRRMEMORY)
+			best = find_best_not_called(outgoing, qe);
+		else
+			best = find_best(outgoing);
+
 		if (!best) {
 			ast_debug(1, "Nobody left to try ringing in queue\n");
 			break;
@@ -3961,6 +4045,17 @@ static int ring_one(struct queue_ent *qe, struct callattempt *outgoing, int *bus
 				}
 			}
 		} else {
+			if (qe->parent->strategy == QUEUE_STRATEGY_XRRMEMORY) {
+				/* Add calling member to queue entry call list */
+				struct call_member *call = ast_calloc(1, sizeof(*call));
+				if (call) {
+					call->next = qe->called_members;
+					qe->called_members = call;
+					ast_copy_string(call->interface, best->interface, sizeof(best->interface));
+					qe->last_penalty = best->penalty;
+				}
+			}
+
 			/* Ring just the best channel */
 			ast_debug(1, "Trying '%s' with metric %d\n", best->interface, best->metric);
 			ret = ring_entry(qe, best, busies);
@@ -4021,6 +4116,38 @@ static int store_next_lin(struct queue_ent *qe, struct callattempt *outgoing)
 		}
 	}
 	qe->linwrapped = 0;
+
+	return 0;
+}
+
+static int store_next_penalty(struct queue_ent *qe, struct callattempt *outgoing)
+{
+	int penalty = qe->last_penalty;
+	int metric;
+	struct callattempt *best = find_best_penalty(outgoing, penalty);
+
+	if (best) {
+	/* Ring just the best channel */
+		metric = best->metric;
+		penalty = best->penalty;
+		if (penalty < 0 || penalty > MAX_QUEUE_PENALTY)
+			penalty = 0;
+		qe->parent->xrrpos[penalty] = metric % 1000;
+		if (option_debug)
+			ast_log(LOG_DEBUG, "Next is '%s' with metric %d and penalty %d\n", best->interface, metric, penalty);
+	} else {
+		if (penalty < 0 || penalty > MAX_QUEUE_PENALTY)
+			penalty = 0;
+		/* Just increment rrpos */
+		if (qe->parent->xwrapped[penalty]) {
+			/* No more channels, start over */
+			qe->parent->xrrpos[penalty] = 0;
+		} else {
+			/* Prioritize next entry */
+			qe->parent->xrrpos[penalty]++;
+		}
+	}
+	qe->parent->xwrapped[penalty] = 0;
 
 	return 0;
 }
@@ -5021,6 +5148,8 @@ static int calc_metric(struct call_queue *q, struct member *mem, int pos, struct
 			  membercount, q->penaltymemberslimit);
 	}
 
+	int rrpos, penalty;
+
 	switch (q->strategy) {
 	case QUEUE_STRATEGY_RINGALL:
 		/* Everyone equal, except for penalty */
@@ -5051,6 +5180,22 @@ static int calc_metric(struct call_queue *q, struct member *mem, int pos, struct
 			tmp->metric = pos;
 		}
 		tmp->metric += mem->penalty * 1000000 * usepenalty;
+		break;
+	case QUEUE_STRATEGY_XRRMEMORY:
+		rrpos = q->rrpos;
+		penalty = mem->penalty;
+		if(penalty < 0 || penalty > MAX_QUEUE_PENALTY)
+			penalty = 0;
+		rrpos = q->xrrpos[penalty];
+		if (pos < rrpos) {
+			tmp->metric = 1000 + pos;
+		} else {
+			if (pos > rrpos)
+				q->xwrapped[penalty] = 1;
+			tmp->metric = pos;
+		}
+		tmp->metric += penalty * 1000000 * usepenalty;
+		tmp->penalty = penalty;
 		break;
 	case QUEUE_STRATEGY_RANDOM:
 		tmp->metric = ast_random() % 1000;
@@ -5580,6 +5725,9 @@ static int try_calling(struct queue_ent *qe, const struct ast_flags opts, char *
 	if (qe->parent->strategy == QUEUE_STRATEGY_RRMEMORY || qe->parent->strategy == QUEUE_STRATEGY_RRORDERED) {
 		store_next_rr(qe, outgoing);
 
+	}
+	if (qe->parent->strategy == QUEUE_STRATEGY_XRRMEMORY) {
+		store_next_penalty(qe, outgoing);
 	}
 	if (qe->parent->strategy == QUEUE_STRATEGY_LINEAR) {
 		store_next_lin(qe, outgoing);
@@ -7085,13 +7233,7 @@ static int ql_exec(struct ast_channel *chan, const char *data)
 
 	AST_STANDARD_APP_ARGS(args, parse);
 
-	if (ast_strlen_zero(args.queuename) || ast_strlen_zero(args.uniqueid)
-	    || ast_strlen_zero(args.membername) || ast_strlen_zero(args.event)) {
-		ast_log(LOG_WARNING, "QueueLog requires arguments (queuename,uniqueid,membername,event[,additionalinfo])\n");
-		return -1;
-	}
-
-	ast_queue_log(args.queuename, args.uniqueid, args.membername, args.event,
+	ast_queue_log(args.uniqueid, args.queuename, args.membername, args.event,
 		"%s", args.params ? args.params : "");
 
 	return 0;
@@ -7149,6 +7291,7 @@ static int queue_exec(struct ast_channel *chan, const char *data)
 	int prio;
 	int qcontinue = 0;
 	int max_penalty, min_penalty;
+	int is_max_penalty = 0;
 	enum queue_result reason = QUEUE_UNKNOWN;
 	/* whether to exit Queue application after the timeout hits */
 	int tries = 0;
@@ -7228,6 +7371,7 @@ static int queue_exec(struct ast_channel *chan, const char *data)
 	if ((max_penalty_str = pbx_builtin_getvar_helper(chan, "QUEUE_MAX_PENALTY"))) {
 		if (sscanf(max_penalty_str, "%30d", &max_penalty) == 1) {
 			ast_debug(1, "%s: Got max penalty %d from ${QUEUE_MAX_PENALTY}.\n", ast_channel_name(chan), max_penalty);
+			is_max_penalty = 1;
 		} else {
 			ast_log(LOG_WARNING, "${QUEUE_MAX_PENALTY}: Invalid value (%s), channel %s.\n",
 				max_penalty_str, ast_channel_name(chan));
@@ -7289,6 +7433,12 @@ static int queue_exec(struct ast_channel *chan, const char *data)
 	}
 	ast_assert(qe.parent != NULL);
 
+	if(qe.parent->strategy == QUEUE_STRATEGY_XRRMEMORY) {
+	       if (!is_max_penalty)
+		       qe.max_penalty = MAX_QUEUE_PENALTY;
+	       if (qe.max_penalty < 0 || qe.max_penalty > MAX_QUEUE_PENALTY)
+		       qe.max_penalty = MAX_QUEUE_PENALTY;
+        }
 	ast_queue_log(args.queuename, ast_channel_uniqueid(chan), "NONE", "ENTERQUEUE", "%s|%s|%d",
 		S_OR(args.url, ""),
 		S_COR(ast_channel_caller(chan)->id.number.valid, ast_channel_caller(chan)->id.number.str, ""),
@@ -7456,6 +7606,7 @@ stop:
 	 */
 	qe.parent = queue_unref(qe.parent);
 
+	clear_called_members(&qe);
 	return res;
 }
 
