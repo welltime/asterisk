@@ -436,7 +436,7 @@ static void odbc_log(const struct ast_event *event, void *userdata)
 				   This should be ok, however, as nobody is going to store just event
 				   date or just time for CDR purposes.
 				 */
-				ast_strftime(colbuf, sizeof(colbuf), "%Y-%m-%d %H:%M:%S.%6q", &tm);
+				ast_strftime(colbuf, sizeof(colbuf), "%Y-%m-%d %H:%M:%S", &tm);
 				colptr = colbuf;
 			} else {
 				if (strcmp(entry->celname, "userdeftype") == 0) {
