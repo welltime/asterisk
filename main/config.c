@@ -2756,7 +2756,7 @@ struct ast_config *ast_config_load2(const char *filename, const char *who_asked,
 	return result;
 }
 
-static struct ast_variable *ast_load_realtime_helper(const char *family, va_list ap)
+static struct ast_variable *ast_load_realtime_helper(enum sql_select_modifier sql_select_modifier, const char *family, va_list ap)
 {
 	struct ast_config_engine *eng;
 	char db[256];
@@ -2766,7 +2766,7 @@ static struct ast_variable *ast_load_realtime_helper(const char *family, va_list
 
 	for (i = 1; ; i++) {
 		if ((eng = find_engine(family, i, db, sizeof(db), table, sizeof(table)))) {
-			if (eng->realtime_func && (res = eng->realtime_func(db, table, ap))) {
+			if (eng->realtime_func && (res = eng->realtime_func(sql_select_modifier, db, table, ap))) {
 				return res;
 			}
 		} else {
@@ -2777,19 +2777,19 @@ static struct ast_variable *ast_load_realtime_helper(const char *family, va_list
 	return res;
 }
 
-struct ast_variable *ast_load_realtime_all(const char *family, ...)
+struct ast_variable *ast_load_realtime_all(enum sql_select_modifier sql_select_modifier, const char *family, ...)
 {
 	struct ast_variable *res;
 	va_list ap;
 
 	va_start(ap, family);
-	res = ast_load_realtime_helper(family, ap);
+	res = ast_load_realtime_helper(sql_select_modifier, family, ap);
 	va_end(ap);
 
 	return res;
 }
 
-struct ast_variable *ast_load_realtime(const char *family, ...)
+struct ast_variable *ast_load_realtime(enum sql_select_modifier sql_select_modifier, const char *family, ...)
 {
 	struct ast_variable *res;
 	struct ast_variable *cur;
@@ -2797,7 +2797,7 @@ struct ast_variable *ast_load_realtime(const char *family, ...)
 	va_list ap;
 
 	va_start(ap, family);
-	res = ast_load_realtime_helper(family, ap);
+	res = ast_load_realtime_helper(sql_select_modifier, family, ap);
 	va_end(ap);
 
 	/* Filter the list. */
@@ -2891,7 +2891,7 @@ int ast_unload_realtime(const char *family)
 	return res;
 }
 
-struct ast_config *ast_load_realtime_multientry(const char *family, ...)
+struct ast_config *ast_load_realtime_multientry(enum sql_select_modifier sql_select_modifier, const char *family, ...)
 {
 	struct ast_config_engine *eng;
 	char db[256];
@@ -2903,7 +2903,7 @@ struct ast_config *ast_load_realtime_multientry(const char *family, ...)
 	va_start(ap, family);
 	for (i = 1; ; i++) {
 		if ((eng = find_engine(family, i, db, sizeof(db), table, sizeof(table)))) {
-			if (eng->realtime_multi_func && (res = eng->realtime_multi_func(db, table, ap))) {
+			if (eng->realtime_multi_func && (res = eng->realtime_multi_func(sql_select_modifier, db, table, ap))) {
 				/* If we were returned an empty cfg, destroy it and return NULL */
 				if (!res->root) {
 					ast_config_destroy(res);
@@ -2919,102 +2919,6 @@ struct ast_config *ast_load_realtime_multientry(const char *family, ...)
 
 	return res;
 }
-
-/*
- * MCN patch start
-*/ 
-
-static struct ast_variable *ast_load_realtime_mcn_helper(const char *family, va_list ap)
-{
-        struct ast_config_engine *eng;
-        char db[256];
-        char table[256];
-        struct ast_variable *res=NULL;
-        int i;
-
-        for (i = 1; ; i++) {
-                if ((eng = find_engine(family, i, db, sizeof(db), table, sizeof(table)))) {
-                        if (eng->realtime_mcn_func && (res = eng->realtime_mcn_func(db, table, ap))) {
-                                return res;
-                        }
-                } else {
-                        return NULL;
-                }
-        }
-
-        return res;
-}
-
-struct ast_variable *ast_load_realtime_mcn(const char *family, ...)
-{
-        struct ast_variable *res;
-        struct ast_variable *cur;
-        struct ast_variable **prev;
-        va_list ap;
-
-        va_start(ap, family);
-        res = ast_load_realtime_mcn_helper(family, ap);
-        va_end(ap);
-
-        /* Filter the list. */
-        prev = &res;
-        cur = res;
-        while (cur) {
-                if (ast_strlen_zero(cur->value)) {
-                        /* Eliminate empty entries */
-                        struct ast_variable *next;
-
-                        next = cur->next;
-                        *prev = next;
-                        ast_variable_destroy(cur);
-                        cur = next;
-                } else {
-                        /* Make blank entries empty and keep them. */
-                        if (cur->value[0] == ' ' && cur->value[1] == '\0') {
-                                char *vptr = (char *) cur->value;
-
-                                vptr[0] = '\0';
-                        }
-
-                        prev = &cur->next;
-                        cur = cur->next;
-                }
-        }
-        return res;
-}
-
-
-struct ast_config *ast_load_realtime_mcn_multientry(const char *family, ...)
-{
-        struct ast_config_engine *eng;
-        char db[256];
-        char table[256];
-        struct ast_config *res = NULL;
-        va_list ap;
-        int i;
-
-        va_start(ap, family);
-        for (i = 1; ; i++) {
-                if ((eng = find_engine(family, i, db, sizeof(db), table, sizeof(table)))) {
-                        if (eng->realtime_multi_mcn_func && (res = eng->realtime_multi_mcn_func(db, table, ap))) {
-                                /* If we were returned an empty cfg, destroy it and return NULL */
-                                if (!res->root) {
-                                        ast_config_destroy(res);
-                                        res = NULL;
-                                }
-                                break;
-                        }
-                } else {
-                        break;
-                }
-        }
-        va_end(ap);
-
-        return res;
-}
-/*
- * MCN patch end
-*/ 
 
 int ast_update_realtime(const char *family, const char *keyfield, const char *lookup, ...)
 {

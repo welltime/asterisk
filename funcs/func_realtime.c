@@ -210,7 +210,7 @@ static int function_realtime_read(struct ast_channel *chan, const char *cmd, cha
 	if (chan)
 		ast_autoservice_start(chan);
 
-	head = ast_load_realtime_all(args.family, args.fieldmatch, args.value, SENTINEL);
+	head = ast_load_realtime_all(SQL_SELECT_MODIFIER_NOTHING, args.family, args.fieldmatch, args.value, SENTINEL);
 
 	if (!head) {
 		if (chan)
@@ -321,7 +321,7 @@ static int realtimefield_read(struct ast_channel *chan, const char *cmd, char *d
 		ast_autoservice_start(chan);
 	}
 
-	if (!(head = ast_load_realtime_all(args.family, args.fieldmatch, args.value, SENTINEL))) {
+	if (!(head = ast_load_realtime_all(SQL_SELECT_MODIFIER_NOTHING, args.family, args.fieldmatch, args.value, SENTINEL))) {
 		if (chan) {
 			ast_autoservice_stop(chan);
 		}
@@ -437,7 +437,7 @@ static int function_realtime_readdestroy(struct ast_channel *chan, const char *c
 	if (chan)
 		ast_autoservice_start(chan);
 
-	head = ast_load_realtime_all(args.family, args.fieldmatch, args.value, SENTINEL);
+	head = ast_load_realtime_all(SQL_SELECT_MODIFIER_NOTHING, args.family, args.fieldmatch, args.value, SENTINEL);
 
 	if (!head) {
 		if (chan)

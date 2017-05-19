@@ -163,7 +163,7 @@ static SQLHSTMT custom_prepare(struct odbc_obj *obj, void *data)
  * \retval var on success
  * \retval NULL on failure
 */
-static struct ast_variable *realtime_odbc(const char *database, const char *table, va_list ap)
+static struct ast_variable *realtime_odbc(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, va_list ap)
 {
 	struct odbc_obj *obj;
 	SQLHSTMT stmt;
@@ -217,6 +217,16 @@ static struct ast_variable *realtime_odbc(const char *database, const char *tabl
 		va_arg(aq, const char *);
 	}
 	va_end(aq);
+
+    switch (sql_select_modifier) {
+        case SQL_SELECT_MODIFIER_NOTHING:
+            break;
+        case SQL_SELECT_MODIFIER_LIMIT_1:
+            snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " LIMIT 1");
+            break;
+        default:
+            ast_log(LOG_ERROR, "realtime_odbc: unimplemented sql_select_modifier case\n");
+    };
 
 	if (ast_string_field_init(&cps, 256)) {
 		ast_odbc_release_obj(obj);
@@ -332,7 +342,7 @@ static struct ast_variable *realtime_odbc(const char *database, const char *tabl
  * \retval var on success
  * \retval NULL on failure
 */
-static struct ast_config *realtime_multi_odbc(const char *database, const char *table, va_list ap)
+static struct ast_config *realtime_multi_odbc(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, va_list ap)
 {
 	struct odbc_obj *obj;
 	SQLHSTMT stmt;
@@ -394,7 +404,16 @@ static struct ast_config *realtime_multi_odbc(const char *database, const char *
 	}
 	va_end(aq);
 
-	snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " ORDER BY %s", initfield);
+    switch (sql_select_modifier) {
+        case SQL_SELECT_MODIFIER_NOTHING:
+            snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " ORDER BY %s", initfield);
+            break;
+        case SQL_SELECT_MODIFIER_LIMIT_1:
+            snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " LIMIT 1");
+            break;
+        default:
+            ast_log(LOG_ERROR, "realtime_multi_odbc: unimplemented sql_select_modifier case\n");
+    };
 
 	if (ast_string_field_init(&cps, 256)) {
 		ast_odbc_release_obj(obj);
@@ -495,334 +514,6 @@ next_sql_fetch:;
 	ast_odbc_release_obj(obj);
 	return cfg;
 }
-
-/*!
- * MCN patch start
-*/
-static struct ast_variable *realtime_mcn_odbc(const char *database, const char *table, va_list ap)
-{
-	struct odbc_obj *obj;
-	SQLHSTMT stmt;
-	char sql[1024];
-	char coltitle[256];
-	struct ast_str *rowdata = ast_str_thread_get(&rowdata_buf, 128);
-	char *op;
-	const char *newparam;
-	char *stringp;
-	char *chunk;
-	SQLSMALLINT collen;
-	int res;
-	int x;
-	struct ast_variable *var=NULL, *prev=NULL;
-	SQLULEN colsize;
-	SQLSMALLINT colcount=0;
-	SQLSMALLINT datatype;
-	SQLSMALLINT decimaldigits;
-	SQLSMALLINT nullable;
-	SQLLEN indicator;
-	va_list aq;
-	struct custom_prepare_struct cps = { .sql = sql };
-	struct ast_flags connected_flag = { RES_ODBC_CONNECTED };
-
-	if (!table) {
-		return NULL;
-	}
-
-	obj = ast_odbc_request_obj2(database, connected_flag);
-
-	if (!obj) {
-		ast_log(LOG_ERROR, "No database handle available with the name of '%s' (check res_odbc.conf)\n", database);
-		return NULL;
-	}
-
-	va_copy(aq, ap);
-	newparam = va_arg(aq, const char *);
-	if (!newparam) {
-		va_end(aq);
-		ast_odbc_release_obj(obj);
-		return NULL;
-	}
-	va_arg(aq, const char *);
-	op = !strchr(newparam, ' ') ? " =" : "";
-	snprintf(sql, sizeof(sql), "SELECT * FROM %s WHERE %s%s ?%s", table, newparam, op,
-		strcasestr(newparam, "LIKE") && !ast_odbc_backslash_is_escape(obj) ? " ESCAPE '\\\\'" : "");
-	while((newparam = va_arg(aq, const char *))) {
-		op = !strchr(newparam, ' ') ? " =" : "";
-		snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " AND %s%s ?%s", newparam, op,
-			strcasestr(newparam, "LIKE") && !ast_odbc_backslash_is_escape(obj) ? " ESCAPE '\\\\'" : "");
-		va_arg(aq, const char *);
-	}
-	va_end(aq);
-
-        snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " LIMIT 1");
-
-	if (ast_string_field_init(&cps, 256)) {
-		ast_odbc_release_obj(obj);
-		return NULL;
-	}
-	va_copy(cps.ap, ap);
-	stmt = ast_odbc_prepare_and_execute(obj, custom_prepare, &cps);
-	va_end(cps.ap);
-	ast_string_field_free_memory(&cps);
-
-	if (!stmt) {
-		ast_odbc_release_obj(obj);
-		return NULL;
-	}
-
-	res = SQLNumResultCols(stmt, &colcount);
-	if ((res != SQL_SUCCESS) && (res != SQL_SUCCESS_WITH_INFO)) {
-		ast_log(LOG_WARNING, "SQL Column Count error!\n[%s]\n\n", sql);
-		SQLFreeHandle (SQL_HANDLE_STMT, stmt);
-		ast_odbc_release_obj(obj);
-		return NULL;
-	}
-
-	res = SQLFetch(stmt);
-	if (res == SQL_NO_DATA) {
-		SQLFreeHandle (SQL_HANDLE_STMT, stmt);
-		ast_odbc_release_obj(obj);
-		return NULL;
-	}
-	if ((res != SQL_SUCCESS) && (res != SQL_SUCCESS_WITH_INFO)) {
-		ast_log(LOG_WARNING, "SQL Fetch error!\n[%s]\n\n", sql);
-		SQLFreeHandle (SQL_HANDLE_STMT, stmt);
-		ast_odbc_release_obj(obj);
-		return NULL;
-	}
-	for (x = 0; x < colcount; x++) {
-		colsize = 0;
-		collen = sizeof(coltitle);
-		res = SQLDescribeCol(stmt, x + 1, (unsigned char *)coltitle, sizeof(coltitle), &collen, 
-					&datatype, &colsize, &decimaldigits, &nullable);
-		if ((res != SQL_SUCCESS) && (res != SQL_SUCCESS_WITH_INFO)) {
-			ast_log(LOG_WARNING, "SQL Describe Column error!\n[%s]\n\n", sql);
-			if (var)
-				ast_variables_destroy(var);
-			ast_odbc_release_obj(obj);
-			return NULL;
-		}
-
-		ast_str_reset(rowdata);
-		indicator = 0;
-
-		res = SQLGetData(stmt, x + 1, SQL_CHAR, ast_str_buffer(rowdata), ast_str_size(rowdata), &indicator);
-		ast_str_update(rowdata);
-		if (indicator == SQL_NULL_DATA) {
-			ast_str_reset(rowdata);
-		} else if (!ast_str_strlen(rowdata)) {
-			/* Because we encode the empty string for a NULL, we will encode
- * 			 * actual empty strings as a string containing a single whitespace. */
-			ast_str_set(&rowdata, -1, "%s", " ");
-		} else if ((res == SQL_SUCCESS) || (res == SQL_SUCCESS_WITH_INFO)) {
-			if (indicator != ast_str_strlen(rowdata)) {
-				/* If the available space was not enough to contain the row data enlarge and read in the rest */
-				ast_str_make_space(&rowdata, indicator + 1);
-				res = SQLGetData(stmt, x + 1, SQL_CHAR, ast_str_buffer(rowdata) + ast_str_strlen(rowdata),
-					ast_str_size(rowdata) - ast_str_strlen(rowdata), &indicator);
-				ast_str_update(rowdata);
-			}
-		}
-
-		if ((res != SQL_SUCCESS) && (res != SQL_SUCCESS_WITH_INFO)) {
-			ast_log(LOG_WARNING, "SQL Get Data error!\n[%s]\n\n", sql);
-			if (var)
-				ast_variables_destroy(var);
-			ast_odbc_release_obj(obj);
-			return NULL;
-		}
-
-		stringp = ast_str_buffer(rowdata);
-		while (stringp) {
-			chunk = strsep(&stringp, ";");
-			if (!ast_strlen_zero(ast_strip(chunk))) {
-				if (strchr(chunk, '^')) {
-					decode_chunk(chunk);
-				}
-				if (prev) {
-					prev->next = ast_variable_new(coltitle, chunk, "");
-					if (prev->next) {
-						prev = prev->next;
-					}
-				} else {
-					prev = var = ast_variable_new(coltitle, chunk, "");
-				}
-			}
-		}
-	}
-
-	SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-	ast_odbc_release_obj(obj);
-	return var;
-}
-
-static struct ast_config *realtime_multi_mcn_odbc(const char *database, const char *table, va_list ap)
-{
-	struct odbc_obj *obj;
-	SQLHSTMT stmt;
-	char sql[1024];
-	char coltitle[256];
-	struct ast_str *rowdata = ast_str_thread_get(&rowdata_buf, 128);
-	const char *initfield;
-	char *op;
-	const char *newparam;
-	char *stringp;
-	char *chunk;
-	SQLSMALLINT collen;
-	int res;
-	int x;
-	struct ast_variable *var=NULL;
-	struct ast_config *cfg=NULL;
-	struct ast_category *cat=NULL;
-	struct ast_flags connected_flag = { RES_ODBC_CONNECTED };
-	SQLULEN colsize;
-	SQLSMALLINT colcount=0;
-	SQLSMALLINT datatype;
-	SQLSMALLINT decimaldigits;
-	SQLSMALLINT nullable;
-	SQLLEN indicator;
-	struct custom_prepare_struct cps = { .sql = sql };
-	va_list aq;
-
-	if (!table) {
-		return NULL;
-	}
-
-	obj = ast_odbc_request_obj2(database, connected_flag);
-	if (!obj) {
-		return NULL;
-	}
-
-	va_copy(aq, ap);
-	newparam = va_arg(aq, const char *);
-	if (!newparam)  {
-		va_end(aq);
-		ast_odbc_release_obj(obj);
-		return NULL;
-	}
-
-	initfield = ast_strdupa(newparam);
-	if ((op = strchr(initfield, ' '))) {
-		*op = '\0';
-	}
-
-	va_arg(aq, const char *);
-	op = !strchr(newparam, ' ') ? " =" : "";
-	snprintf(sql, sizeof(sql), "SELECT * FROM %s WHERE %s%s ?%s", table, newparam, op,
-		strcasestr(newparam, "LIKE") && !ast_odbc_backslash_is_escape(obj) ? " ESCAPE '\\\\'" : "");
-	while((newparam = va_arg(aq, const char *))) {
-		op = !strchr(newparam, ' ') ? " =" : "";
-		snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " AND %s%s ?%s", newparam, op,
-			strcasestr(newparam, "LIKE") && !ast_odbc_backslash_is_escape(obj) ? " ESCAPE '\\\\'" : "");
-		va_arg(aq, const char *);
-	}
-	va_end(aq);
-
-	snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " LIMIT 1");
-
-	if (ast_string_field_init(&cps, 256)) {
-		ast_odbc_release_obj(obj);
-		return NULL;
-	}
-	va_copy(cps.ap, ap);
-	stmt = ast_odbc_prepare_and_execute(obj, custom_prepare, &cps);
-	va_end(cps.ap);
-	ast_string_field_free_memory(&cps);
-
-	if (!stmt) {
-		ast_odbc_release_obj(obj);
-		return NULL;
-	}
-
-	res = SQLNumResultCols(stmt, &colcount);
-	if ((res != SQL_SUCCESS) && (res != SQL_SUCCESS_WITH_INFO)) {
-		ast_log(LOG_WARNING, "SQL Column Count error!\n[%s]\n\n", sql);
-		SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-		ast_odbc_release_obj(obj);
-		return NULL;
-	}
-
-	cfg = ast_config_new();
-	if (!cfg) {
-		ast_log(LOG_WARNING, "Out of memory!\n");
-		SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-		ast_odbc_release_obj(obj);
-		return NULL;
-	}
-
-	while ((res=SQLFetch(stmt)) != SQL_NO_DATA) {
-		var = NULL;
-		if ((res != SQL_SUCCESS) && (res != SQL_SUCCESS_WITH_INFO)) {
-			ast_log(LOG_WARNING, "SQL Fetch error!\n[%s]\n\n", sql);
-			continue;
-		}
-		cat = ast_category_new("","",99999);
-		if (!cat) {
-			ast_log(LOG_WARNING, "Out of memory!\n");
-			continue;
-		}
-		for (x=0;x<colcount;x++) {
-			colsize = 0;
-			collen = sizeof(coltitle);
-			res = SQLDescribeCol(stmt, x + 1, (unsigned char *)coltitle, sizeof(coltitle), &collen, 
-						&datatype, &colsize, &decimaldigits, &nullable);
-			if ((res != SQL_SUCCESS) && (res != SQL_SUCCESS_WITH_INFO)) {
-				ast_log(LOG_WARNING, "SQL Describe Column error!\n[%s]\n\n", sql);
-				ast_category_destroy(cat);
-				goto next_sql_fetch;
-			}
-
-			ast_str_reset(rowdata);
-			indicator = 0;
-
-			res = SQLGetData(stmt, x + 1, SQL_CHAR, ast_str_buffer(rowdata), ast_str_size(rowdata), &indicator);
-			ast_str_update(rowdata);
-			if (indicator == SQL_NULL_DATA) {
-				continue;
-			}
-
-			if ((res == SQL_SUCCESS) || (res == SQL_SUCCESS_WITH_INFO)) {
-				if (indicator != ast_str_strlen(rowdata)) {
-					/* If the available space was not enough to contain the row data enlarge and read in the rest */
-					ast_str_make_space(&rowdata, indicator + 1);
-					res = SQLGetData(stmt, x + 1, SQL_CHAR, ast_str_buffer(rowdata) + ast_str_strlen(rowdata),
-						ast_str_size(rowdata) - ast_str_strlen(rowdata), &indicator);
-					ast_str_update(rowdata);
-				}
-			}
-
-			if ((res != SQL_SUCCESS) && (res != SQL_SUCCESS_WITH_INFO)) {
-				ast_log(LOG_WARNING, "SQL Get Data error!\n[%s]\n\n", sql);
-				ast_category_destroy(cat);
-				goto next_sql_fetch;
-			}
-			stringp = ast_str_buffer(rowdata);
-			while (stringp) {
-				chunk = strsep(&stringp, ";");
-				if (!ast_strlen_zero(ast_strip(chunk))) {
-					if (strchr(chunk, '^')) {
-						decode_chunk(chunk);
-					}
-					if (!strcmp(initfield, coltitle)) {
-						ast_category_rename(cat, chunk);
-					}
-					var = ast_variable_new(coltitle, chunk, "");
-					ast_variable_append(cat, var);
-				}
-			}
-		}
-		ast_category_append(cfg, cat);
-next_sql_fetch:;
-	}
-
-	SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-	ast_odbc_release_obj(obj);
-	return cfg;
-}
-
-/*!
- * MCN patch end
-*/
 
 /*!
  * \brief Excute an UPDATE query
@@ -1594,8 +1285,6 @@ static struct ast_config_engine odbc_engine = {
 	.load_func = config_odbc,
 	.realtime_func = realtime_odbc,
 	.realtime_multi_func = realtime_multi_odbc,
-	.realtime_mcn_func = realtime_mcn_odbc,
-	.realtime_multi_mcn_func = realtime_multi_mcn_odbc,
 	.store_func = store_odbc,
 	.destroy_func = destroy_odbc,
 	.update_func = update_odbc,

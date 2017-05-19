@@ -316,7 +316,7 @@ static char *decode_chunk(char *chunk)
 	return orig;
 }
 
-static struct ast_variable *realtime_mysql(const char *database, const char *table, va_list ap)
+static struct ast_variable *realtime_mysql(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, va_list ap)
 {
 	struct mysql_conn *dbh;
 	MYSQL_RES *result;
@@ -423,7 +423,7 @@ static struct ast_variable *realtime_mysql(const char *database, const char *tab
 	return var;
 }
 
-static struct ast_config *realtime_multi_mysql(const char *database, const char *table, va_list ap)
+static struct ast_config *realtime_multi_mysql(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, va_list ap)
 {
 	struct mysql_conn *dbh;
 	MYSQL_RES *result;
