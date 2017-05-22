@@ -416,7 +416,7 @@ static struct columns *find_column(struct tables *t, const char *colname)
 	return NULL;
 }
 
-static struct ast_variable *realtime_pgsql(const char *database, const char *tablename, va_list ap)
+static struct ast_variable *realtime_pgsql(enum sql_select_modifier sql_select_modifier, const char *database, const char *tablename, va_list ap)
 {
 	RAII_VAR(PGresult *, result, NULL, PQclear);
 	int num_rows = 0, pgresult;
@@ -531,7 +531,7 @@ static struct ast_variable *realtime_pgsql(const char *database, const char *tab
 	return var;
 }
 
-static struct ast_config *realtime_multi_pgsql(const char *database, const char *table, va_list ap)
+static struct ast_config *realtime_multi_pgsql(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, va_list ap)
 {
 	RAII_VAR(PGresult *, result, NULL, PQclear);
 	int num_rows = 0, pgresult;

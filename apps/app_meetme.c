@@ -2183,7 +2183,7 @@ static int rt_extend_conf(const char *confno)
 	ast_localtime(&now, &tm, NULL);
 	ast_strftime(currenttime, sizeof(currenttime), DATE_FORMAT, &tm);
 
-	var = ast_load_realtime("meetme", "confno",
+	var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "meetme", "confno",
 		confno, "startTime<= ", currenttime,
 		"endtime>= ", currenttime, NULL);
 
@@ -2211,7 +2211,7 @@ static int rt_extend_conf(const char *confno)
 	ast_strftime(currenttime, sizeof(currenttime), DATE_FORMAT, &tm);
 	strcat(currenttime, "0"); /* Seconds needs to be 00 */
 
-	var = ast_load_realtime("meetme", "confno",
+	var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "meetme", "confno",
 		confno, "startTime<= ", currenttime,
 		"endtime>= ", currenttime, NULL);
 
@@ -3481,7 +3481,7 @@ static int conf_run(struct ast_channel *chan, struct ast_conference *conf, struc
 					if (!checked) {
 						ast_localtime(&now, &tm, NULL);
 						ast_strftime(currenttime, sizeof(currenttime), DATE_FORMAT, &tm);
-						var = origvar = ast_load_realtime("meetme", "confno",
+						var = origvar = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "meetme", "confno",
 							conf->confno, "starttime <=", currenttime,
 							 "endtime >=", currenttime, NULL);
 
@@ -4336,7 +4336,7 @@ static struct ast_conference *find_conf_realtime(struct ast_channel *chan, char 
 
 			ast_debug(1, "Looking for conference %s that starts after %s\n", confno, currenttime);
 
-			var = ast_load_realtime("meetme", "confno",
+			var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "meetme", "confno",
 				confno, "starttime <= ", currenttime, "endtime >= ",
 				currenttime, NULL);
 
@@ -4346,7 +4346,7 @@ static struct ast_conference *find_conf_realtime(struct ast_channel *chan, char 
 
 				ast_localtime(&now, &tm, NULL);
 				ast_strftime(currenttime, sizeof(currenttime), DATE_FORMAT, &tm);
-				var = ast_load_realtime("meetme", "confno",
+				var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "meetme", "confno",
 					confno, "starttime <= ", currenttime, "endtime >= ",
 					currenttime, NULL);
 			}
@@ -4356,7 +4356,7 @@ static struct ast_conference *find_conf_realtime(struct ast_channel *chan, char 
 				now.tv_sec += earlyalert;
 				ast_localtime(&now, &etm, NULL);
 				ast_strftime(eatime, sizeof(eatime), DATE_FORMAT, &etm);
-				var = ast_load_realtime("meetme", "confno",
+				var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "meetme", "confno",
 					confno, "starttime <= ", eatime, "endtime >= ",
 					currenttime, NULL);
 				if (var) {
@@ -4365,7 +4365,7 @@ static struct ast_conference *find_conf_realtime(struct ast_channel *chan, char 
 			}
 
 		} else {
-			 var = ast_load_realtime("meetme", "confno", confno, NULL);
+			 var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "meetme", "confno", confno, NULL);
 		}
 
 		if (!var) {
@@ -4735,7 +4735,7 @@ static int conf_exec(struct ast_channel *chan, const char *data)
 					ast_config_destroy(cfg);
 				}
 
-				if (ast_strlen_zero(confno) && (cfg = ast_load_realtime_multientry("meetme", "confno LIKE", "%", SENTINEL))) {
+				if (ast_strlen_zero(confno) && (cfg = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "meetme", "confno LIKE", "%", SENTINEL))) {
 					const char *catg;
 					for (catg = ast_category_browse(cfg, NULL); catg; catg = ast_category_browse(cfg, catg)) {
 						const char *confno_tmp = ast_variable_retrieve(cfg, catg, "confno");

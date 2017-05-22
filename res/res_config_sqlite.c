@@ -342,7 +342,7 @@ static int add_rt_cfg_entry(void *arg, int argc, char **argv,
  * \retval NULL if an error occurred
  * \see add_rt_cfg_entry()
  */
-static struct ast_variable * realtime_handler(const char *database,
+static struct ast_variable * realtime_handler(enum sql_select_modifier sql_select_modifier, const char *database,
 	const char *table, va_list ap);
 
 /*!
@@ -379,7 +379,7 @@ static int add_rt_multi_cfg_entry(void *arg, int argc, char **argv,
  *
  * \see add_rt_multi_cfg_entry()
  */
-static struct ast_config * realtime_multi_handler(const char *database,
+static struct ast_config * realtime_multi_handler(enum sql_select_modifier sql_select_modifier, const char *database,
 	const char *table, va_list ap);
 
 /*!
@@ -1032,7 +1032,7 @@ static int add_rt_cfg_entry(void *arg, int argc, char **argv, char **columnNames
 	return 0;
 }
 
-static struct ast_variable * realtime_handler(const char *database, const char *table, va_list ap)
+static struct ast_variable * realtime_handler(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, va_list ap)
 {
 	char *query, *errormsg = NULL, *op, *tmp_str;
 	struct rt_cfg_entry_args args;
@@ -1171,7 +1171,7 @@ static int add_rt_multi_cfg_entry(void *arg, int argc, char **argv, char **colum
 	return 0;
 }
 
-static struct ast_config *realtime_multi_handler(const char *database,
+static struct ast_config *realtime_multi_handler(enum sql_select_modifier sql_select_modifier, const char *database,
 	const char *table, va_list ap)
 {
 	char *query, *errormsg = NULL, *op, *tmp_str, *initfield;
