@@ -163,7 +163,7 @@ static SQLHSTMT custom_prepare(struct odbc_obj *obj, void *data)
  * \retval var on success
  * \retval NULL on failure
 */
-static struct ast_variable *realtime_odbc(const char *database, const char *table, va_list ap)
+static struct ast_variable *realtime_odbc(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, va_list ap)
 {
 	struct odbc_obj *obj;
 	SQLHSTMT stmt;
@@ -217,6 +217,16 @@ static struct ast_variable *realtime_odbc(const char *database, const char *tabl
 		va_arg(aq, const char *);
 	}
 	va_end(aq);
+
+        switch (sql_select_modifier) {
+            case SQL_SELECT_MODIFIER_NOTHING:
+                break;
+            case SQL_SELECT_MODIFIER_LIMIT_1:
+                snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " LIMIT 1");
+                break;
+            default:
+                ast_log(LOG_ERROR, "realtime_odbc: unimplemented sql_select_modifier case\n");
+        };
 
 	if (ast_string_field_init(&cps, 256)) {
 		ast_odbc_release_obj(obj);
@@ -332,7 +342,7 @@ static struct ast_variable *realtime_odbc(const char *database, const char *tabl
  * \retval var on success
  * \retval NULL on failure
 */
-static struct ast_config *realtime_multi_odbc(const char *database, const char *table, va_list ap)
+static struct ast_config *realtime_multi_odbc(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, va_list ap)
 {
 	struct odbc_obj *obj;
 	SQLHSTMT stmt;
@@ -394,7 +404,16 @@ static struct ast_config *realtime_multi_odbc(const char *database, const char *
 	}
 	va_end(aq);
 
-	snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " ORDER BY %s", initfield);
+        switch (sql_select_modifier) {
+            case SQL_SELECT_MODIFIER_NOTHING:
+                snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " ORDER BY %s", initfield);
+                break;
+            case SQL_SELECT_MODIFIER_LIMIT_1:
+                snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " LIMIT 1");
+                break;
+            default:
+                ast_log(LOG_ERROR, "realtime_multi_odbc: unimplemented sql_select_modifier case\n");
+        };
 
 	if (ast_string_field_init(&cps, 256)) {
 		ast_odbc_release_obj(obj);

@@ -1272,7 +1272,7 @@ static struct oh323_alias *realtime_alias(const char *alias)
 	struct ast_variable *var, *tmp;
 	struct oh323_alias *a;
 
-	var = ast_load_realtime("h323", "name", alias, SENTINEL);
+	var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "h323", "name", alias, SENTINEL);
 
 	if (!var)
 		return NULL;
@@ -1511,10 +1511,10 @@ static struct oh323_user *realtime_user(const call_details_t *cd)
 	const char *username;
 
 	if (userbyalias)
-		var = ast_load_realtime("h323", "name", username = cd->call_source_aliases, SENTINEL);
+		var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "h323", "name", username = cd->call_source_aliases, SENTINEL);
 	else {
 		username = (char *)NULL;
-		var = ast_load_realtime("h323", "host", cd->sourceIp, SENTINEL);
+		var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "h323", "host", cd->sourceIp, SENTINEL);
 	}
 
 	if (!var)
@@ -1633,9 +1633,9 @@ static struct oh323_peer *realtime_peer(const char *peername, struct sockaddr_in
 
 	/* First check on peer name */
 	if (peername)
-		var = ast_load_realtime("h323", "name", peername, SENTINEL);
+		var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "h323", "name", peername, SENTINEL);
 	else if (sin) /* Then check on IP address for dynamic peers */
-		var = ast_load_realtime("h323", "host", addr = ast_inet_ntoa(sin->sin_addr), SENTINEL);
+		var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "h323", "host", addr = ast_inet_ntoa(sin->sin_addr), SENTINEL);
 	else
 		return NULL;
 
