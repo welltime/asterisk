@@ -5148,7 +5148,12 @@ static struct ast_variable *get_insecure_variable_from_sippeers(const char *colu
 {
 	struct ast_config *peerlist;
 	struct ast_variable *var = NULL;
-	if ((peerlist = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_LIMIT_1, "sippeers", column, value, "insecure LIKE", "%port%", SENTINEL))) {
+	peerlist = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_LIMIT_1, "sippeers",
+		column, value,
+		"insecure", "ANY(ARRAY['port','port,invite','invite,port'])",
+		SENTINEL
+	);
+	if (peerlist) {
 		if ((var = get_insecure_variable_from_config(peerlist))) {
 			/* Must clone, because var will get freed along with
 			 * peerlist. */
