@@ -34,3 +34,9 @@ menuselect-tree
 latex
 doxygen.log
 
+# qt creator's project files
+/asterisk.config
+/asterisk.creator
+/asterisk.creator.user
+/asterisk.files
+/asterisk.includes
