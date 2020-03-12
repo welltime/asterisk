@@ -75,6 +75,8 @@ enum ast_cel_event_type {
 	AST_CEL_FORWARD = 16,
 	/*! \brief A local channel optimization occurred */
 	AST_CEL_LOCAL_OPTIMIZE = 17,
+	/*! \brief start call to queue member */
+	AST_CEL_AGENTCALLED = 18,
 };
 
 /*!
