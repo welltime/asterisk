@@ -823,6 +823,7 @@ static int global_rtpkeepalive;     /*!< Send RTP keepalives */
 static int global_reg_timeout;      /*!< Global time between attempts for outbound registrations */
 static int global_regattempts_max;  /*!< Registration attempts before giving up */
 static int global_reg_retry_403;    /*!< Treat 403 responses to registrations as 401 responses */
+static int global_usexremoteip;     /* MCN Patch for add usexremoteip option */
 static int global_shrinkcallerid;   /*!< enable or disable shrinking of caller id  */
 static int global_callcounter;      /*!< Enable call counters for all devices. This is currently enabled by setting the peer
                                      *   call-limit to INT_MAX. When we remove the call-limit from the code, we can make it
@@ -16997,6 +16998,7 @@ static enum parse_register_result parse_register_contact(struct sip_pvt *pvt, st
 	int start = 0;
 	int wildcard_found = 0;
 	int single_binding_found = 0;
+	const char *xremiphdr;  /*MCN X-RemoteIP Header variable*/
 
 	ast_copy_string(contact, __get_header(req, "Contact", &start), sizeof(contact));
 
@@ -17127,15 +17129,44 @@ static enum parse_register_result parse_register_contact(struct sip_pvt *pvt, st
 		peer->addr = pvt->recv;
 	}
 
-	/* Check that they're allowed to register at this IP */
-	if (ast_apply_acl(sip_cfg.contact_acl, &peer->addr, "SIP contact ACL: ") != AST_SENSE_ALLOW ||
-			ast_apply_acl(peer->contactacl, &peer->addr, "SIP contact ACL: ") != AST_SENSE_ALLOW) {
-		ast_log(LOG_WARNING, "Domain '%s' disallowed by contact ACL (violating IP %s)\n", hostport,
-				ast_sockaddr_stringify_addr(&peer->addr));
-		ast_string_field_set(peer, fullcontact, "");
-		ast_string_field_set(pvt, our_contact, "");
-		return PARSE_REGISTER_DENIED;
+	/* MCN parse_register_contact Patch Peer fails ACL check header X-RemoteIP */
+	ast_debug(1, "MCN parse_register_contact X-RemoteIP check start.\n");
+
+	xremiphdr = sip_get_header(req, "X-RemoteIP");
+
+	if (!ast_strlen_zero(xremiphdr) && global_usexremoteip) {
+
+		ast_debug(1, "MCN parse_register_contact Peer IP '%s'\n", ast_sockaddr_stringify_addr(&peer->addr));
+
+		struct ast_sockaddr xremip;
+		ast_sockaddr_parse(&xremip, xremiphdr, PARSE_PORT_FORBID);
+
+		ast_debug(1, "MCN parse_register_contact X-RemoteIP '%s'\n", ast_sockaddr_stringify_addr(&xremip));
+
+		/* Check that they're allowed to register at this X-RemoteIP */
+		if (ast_apply_acl(sip_cfg.contact_acl, &xremip, "SIP contact ACL: ") != AST_SENSE_ALLOW ||
+				ast_apply_acl(peer->contactacl, &xremip, "SIP contact ACL: ") != AST_SENSE_ALLOW) {
+			ast_log(LOG_WARNING, "Domain '%s' disallowed by contact ACL (violating X-RemoteIP %s)\n", hostport,
+					ast_sockaddr_stringify_addr(&xremip));
+			ast_string_field_set(peer, fullcontact, "");
+			ast_string_field_set(pvt, our_contact, "");
+			return PARSE_REGISTER_DENIED;
+		}
+	} else {
+		/* Check that they're allowed to register at this IP */
+		if (ast_apply_acl(sip_cfg.contact_acl, &peer->addr, "SIP contact ACL: ") != AST_SENSE_ALLOW ||
+				ast_apply_acl(peer->contactacl, &peer->addr, "SIP contact ACL: ") != AST_SENSE_ALLOW) {
+			ast_log(LOG_WARNING, "Domain '%s' disallowed by contact ACL (violating IP %s)\n", hostport,
+					ast_sockaddr_stringify_addr(&peer->addr));
+			ast_string_field_set(peer, fullcontact, "");
+			ast_string_field_set(pvt, our_contact, "");
+			return PARSE_REGISTER_DENIED;
+		}
 	}
+
+	ast_debug(1, "MCN parse_register_contact X-RemoteIP check end.\n");
+
+	/* MCN parse_register_contact Patch Peer fails ACL check header X-RemoteIP */
 
 	/* if the Contact header information copied into peer->addr matches the
 	 * received address, and the transport types are the same, then copy socket
@@ -17967,16 +17998,45 @@ static enum check_auth_result register_verify(struct sip_pvt *p, struct ast_sock
 		peer = ao2_t_global_obj_ref(g_bogus_peer, "register_verify: Get the bogus peer.");
 	}
 
-	if (!(peer && ast_apply_acl(peer->acl, addr, "SIP Peer ACL: "))) {
-		/* Peer fails ACL check */
-		if (peer) {
-			sip_unref_peer(peer, "register_verify: sip_unref_peer: from sip_find_peer operation");
-			peer = NULL;
-			res = AUTH_ACL_FAILED;
-		} else {
-			res = AUTH_NOT_FOUND;
+	/* MCN register_verify Patch Peer fails ACL check header X-RemoteIP */
+
+	ast_debug(1, "MCN register_verify X-RemoteIP check start.\n");
+
+	const char *xremiphdr = sip_get_header(req, "X-RemoteIP");
+
+	if (!ast_strlen_zero(xremiphdr) && global_usexremoteip) {
+
+		ast_debug(1, "MCN register_verify Peer IP '%s'\n", ast_sockaddr_stringify_addr(addr));
+
+		struct ast_sockaddr xremip;
+		ast_sockaddr_parse(&xremip, xremiphdr, PARSE_PORT_FORBID);
+
+		ast_debug(1, "MCN register_verify X-RemoteIP '%s'\n", ast_sockaddr_stringify_addr(&xremip));
+
+		if (!(peer && ast_apply_acl(peer->acl, &xremip, "SIP Peer ACL: "))) {
+			/* Peer fails ACL check header X-RemoteIP */
+			if (peer) {
+				sip_unref_peer(peer, "register_verify: sip_unref_peer: from sip_find_peer operation");
+				peer = NULL;
+				res = AUTH_ACL_FAILED;
+			} else {
+				res = AUTH_NOT_FOUND;
+			}
+		}
+	} else {
+		if (!(peer && ast_apply_acl(peer->acl, addr, "SIP Peer ACL: "))) {
+			/* Peer fails ACL check */
+			if (peer) {
+				sip_unref_peer(peer, "register_verify: sip_unref_peer: from sip_find_peer operation");
+				peer = NULL;
+				res = AUTH_ACL_FAILED;
+			} else {
+				res = AUTH_NOT_FOUND;
+			}
 		}
 	}
+	ast_debug(1, "MCN register_verify X-RemoteIP check end.\n");
+	/* MCN register_verify Patch Peer fails ACL check header X-RemoteIP */
 
 	if (peer) {
 		ao2_lock(peer);
@@ -19316,11 +19376,33 @@ static enum check_auth_result check_peer_ok(struct sip_pvt *p, char *of,
 		bogus_peer = NULL;
 	}
 
-	if (!ast_apply_acl(peer->acl, addr, "SIP Peer ACL: ")) {
-		ast_debug(2, "Found peer '%s' for '%s', but fails host access\n", peer->name, of);
-		sip_unref_peer(peer, "sip_unref_peer: check_peer_ok: from sip_find_peer call, early return of AUTH_ACL_FAILED");
-		return AUTH_ACL_FAILED;
+	/* MCN check_peer_ok Patch Peer fails ACL check header X-RemoteIP */
+
+	const char *xremiphdr = sip_get_header(req, "X-RemoteIP");
+
+	if (!ast_strlen_zero(xremiphdr) && global_usexremoteip) {
+
+		struct ast_sockaddr xremip;
+		ast_sockaddr_parse(&xremip, xremiphdr, PARSE_PORT_FORBID);
+
+		ast_debug(1, "MCN check_peer_ok Peer IP '%s'\n", ast_sockaddr_stringify_addr(addr));
+		ast_debug(1, "MCN check_peer_ok X-RemoteIP '%s'\n", ast_sockaddr_stringify_addr(&xremip));
+
+		if (!ast_apply_acl(peer->acl, &xremip, "SIP Peer ACL: ")) {
+			ast_debug(2, "Found peer '%s' for '%s', but fails host access\n", peer->name, of);
+			sip_unref_peer(peer, "sip_unref_peer: check_peer_ok: from sip_find_peer call, early return of AUTH_ACL_FAILED");
+			return AUTH_ACL_FAILED;
+		}
+	} else {
+		if (!ast_apply_acl(peer->acl, addr, "SIP Peer ACL: ")) {
+			ast_debug(2, "Found peer '%s' for '%s', but fails host access\n", peer->name, of);
+			sip_unref_peer(peer, "sip_unref_peer: check_peer_ok: from sip_find_peer call, early return of AUTH_ACL_FAILED");
+			return AUTH_ACL_FAILED;
+		}
 	}
+
+	/* MCN check_peer_ok Patch Peer fails ACL check header X-RemoteIP */
+
 	if (debug && peer != bogus_peer) {
 		ast_verbose("Found peer '%s' for '%s' from %s\n",
 			peer->name, of, ast_sockaddr_stringify(&p->recv));
@@ -21920,6 +22002,7 @@ static char *sip_show_settings(struct ast_cli_entry *e, int cmd, struct ast_cli_
 	ast_cli(a->fd, "  Ignore SDP sess. ver.:  %s\n", AST_CLI_YESNO(ast_test_flag(&global_flags[1], SIP_PAGE2_IGNORESDPVERSION)));
 	ast_cli(a->fd, "  AutoCreate Peer:        %s\n", autocreatepeer2str(sip_cfg.autocreatepeer));
 	ast_cli(a->fd, "  Match Auth Username:    %s\n", AST_CLI_YESNO(global_match_auth_username));
+	ast_cli(a->fd, "  UseXremoteIp:           %s\n", AST_CLI_YESNO(global_usexremoteip)); /* MCN Patch for add usexremoteip option */
 	ast_cli(a->fd, "  Allow unknown access:   %s\n", AST_CLI_YESNO(sip_cfg.allowguest));
 	ast_cli(a->fd, "  Allow subscriptions:    %s\n", AST_CLI_YESNO(ast_test_flag(&global_flags[1], SIP_PAGE2_ALLOWSUBSCRIBE)));
 	ast_cli(a->fd, "  Allow overlap dialing:  %s\n", allowoverlap2str(ast_test_flag(&global_flags[1], SIP_PAGE2_ALLOWOVERLAP)));
@@ -29072,9 +29155,18 @@ static int handle_request_register(struct sip_pvt *p, struct sip_request *req, s
 			reason = "Unknown failure";
 			break;
 		}
-		ast_log(LOG_NOTICE, "Registration from '%s' failed for '%s' - %s\n",
-			sip_get_header(req, "To"), ast_sockaddr_stringify(addr),
-			reason);
+		/* MCN handle_request_register Patch X-RemoteIP*/
+		const char *xremiphdr = sip_get_header(req, "X-RemoteIP");
+		if (!ast_strlen_zero(xremiphdr)) {
+			ast_log(LOG_NOTICE, "Registration from '%s' failed for X-RemoteIP '%s' - %s\n",
+				sip_get_header(req, "To"), xremiphdr,
+				reason);
+		} else {
+			ast_log(LOG_NOTICE, "Registration from '%s' failed for '%s' - %s\n",
+				sip_get_header(req, "To"), ast_sockaddr_stringify(addr),
+				reason);
+		}
+		/* MCN handle_request_register Patch X-RemoteIP*/
 		append_history(p, "RegRequest", "Failed : Account %s : %s", sip_get_header(req, "To"), reason);
 	} else {
 		req->authenticated = 1;
@@ -32740,6 +32832,7 @@ static int reload_config(enum channelreloadreason reason)
 	global_reg_timeout = DEFAULT_REGISTRATION_TIMEOUT;
 	global_regattempts_max = 0;
 	global_reg_retry_403 = 0;
+	global_usexremoteip = 0; /* MCN Patch for add usexremoteip option */
 	sip_cfg.pedanticsipchecking = DEFAULT_PEDANTIC;
 	sip_cfg.autocreatepeer = DEFAULT_AUTOCREATEPEER;
 	global_autoframing = 0;
@@ -33140,6 +33233,10 @@ static int reload_config(enum channelreloadreason reason)
 			global_regattempts_max = atoi(v->value);
 		} else if (!strcasecmp(v->name, "register_retry_403")) {
 			global_reg_retry_403 = ast_true(v->value);
+		/* MCN Patch for add usexremoteip option */
+		} else if (!strcasecmp(v->name, "usexremoteip")) {
+			global_usexremoteip = ast_true(v->value);
+		/* MCN Patch for add usexremoteip option */
 		} else if (!strcasecmp(v->name, "bindaddr") || !strcasecmp(v->name, "udpbindaddr")) {
 			if (ast_parse_arg(v->value, PARSE_ADDR, &bindaddr)) {
 				ast_log(LOG_WARNING, "Invalid address: %s\n", v->value);
