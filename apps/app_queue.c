@@ -2455,25 +2455,8 @@ static void pending_members_remove(struct member *mem)
 */
 static void update_status(struct call_queue *q, struct member *m, const int status)
 {
-	if (m->status != status) {
-		/* If this member has transitioned to being available then update their queue
-		 * information. If they are currently in a call then the leg to the agent will be
-		 * considered done and the call finished.
-		 */
-		if (status == AST_DEVICE_NOT_INUSE) {
-			update_queue(q, m, m->callcompletedinsl, m->starttime);
-		}
-
-		m->status = status;
-
-		/* Remove the member from the pending members pool only when the status changes.
-		 * This is not done unconditionally because we can occasionally see multiple
-		 * device state notifications of not in use after a previous call has ended,
-		 * including after we have initiated a new call. This is more likely to
-		 * happen when there is latency in the connection to the member.
-		 */
-		pending_members_remove(m);
-	}
+	m->status = status;
+	pending_members_remove(m);
 
 	queue_publish_member_blob(queue_member_status_type(), queue_member_blob_create(q, m));
 }
