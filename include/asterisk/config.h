@@ -106,9 +106,14 @@ struct ast_variable {
 	char stuff[0];
 };
 
+enum sql_select_modifier {
+	SQL_SELECT_MODIFIER_NOTHING,
+	SQL_SELECT_MODIFIER_LIMIT_1
+};
+
 typedef struct ast_config *config_load_func(const char *database, const char *table, const char *configfile, struct ast_config *config, struct ast_flags flags, const char *suggested_include_file, const char *who_asked);
-typedef struct ast_variable *realtime_var_get(const char *database, const char *table, const struct ast_variable *fields);
-typedef struct ast_config *realtime_multi_get(const char *database, const char *table, const struct ast_variable *fields);
+typedef struct ast_variable *realtime_var_get(enum sql_select_modifier, const char *database, const char *table, const struct ast_variable *fields);
+typedef struct ast_config *realtime_multi_get(enum sql_select_modifier, const char *database, const char *table, const struct ast_variable *fields);
 typedef int realtime_update(const char *database, const char *table, const char *keyfield, const char *entity, const struct ast_variable *fields);
 typedef int realtime_update2(const char *database, const char *table, const struct ast_variable *lookup_fields, const struct ast_variable *update_fields);
 typedef int realtime_store(const char *database, const char *table, const struct ast_variable *fields);
@@ -457,10 +462,10 @@ int ast_category_exist(const struct ast_config *config, const char *category_nam
  * You should use the constant SENTINEL to terminate arguments, in
  * order to preserve cross-platform compatibility.
  */
-struct ast_variable *ast_load_realtime_fields(const char *family, const struct ast_variable *fields);
-struct ast_variable *ast_load_realtime(const char *family, ...) attribute_sentinel;
-struct ast_variable *ast_load_realtime_all_fields(const char *family, const struct ast_variable *fields);
-struct ast_variable *ast_load_realtime_all(const char *family, ...) attribute_sentinel;
+struct ast_variable *ast_load_realtime_fields(enum sql_select_modifier sql_select_modifier, const char *family, const struct ast_variable *fields);
+struct ast_variable *ast_load_realtime(enum sql_select_modifier sql_select_modifier, const char *family, ...) attribute_sentinel;
+struct ast_variable *ast_load_realtime_all_fields(enum sql_select_modifier sql_select_modifier, const char *family, const struct ast_variable *fields);
+struct ast_variable *ast_load_realtime_all(enum sql_select_modifier sql_select_modifier, const char *family, ...) attribute_sentinel;
 
 /*!
  * \brief Release any resources cached for a realtime family
@@ -540,7 +545,7 @@ int ast_realtime_require_field(const char *family, ...) attribute_sentinel;
  * \return An ast_config with one or more results
  * \retval NULL Error or no results returned
  */
-struct ast_config *ast_load_realtime_multientry_fields(const char *family, const struct ast_variable *fields);
+struct ast_config *ast_load_realtime_multientry_fields(enum sql_select_modifier sql_select_modifier, const char *family, const struct ast_variable *fields);
 
 /*!
  * \brief Retrieve realtime configuration
@@ -560,7 +565,7 @@ struct ast_config *ast_load_realtime_multientry_fields(const char *family, const
  * \note You should use the constant SENTINEL to terminate arguments, in
  * order to preserve cross-platform compatibility.
  */
-struct ast_config *ast_load_realtime_multientry(const char *family, ...) attribute_sentinel;
+struct ast_config *ast_load_realtime_multientry(enum sql_select_modifier sql_select_modifier, const char *family, ...) attribute_sentinel;
 
 /*!
  * \brief Update realtime configuration
