@@ -881,7 +881,7 @@ void ast_queue_log(const char *queuename, const char *callid, const char *agent,
 	if (ast_check_realtime("queue_log")) {
 		tv = ast_tvnow();
 		ast_localtime(&tv, &tm, logfiles.queue_log_realtime_use_gmt ? "GMT" : NULL);
-		ast_strftime(time_str, sizeof(time_str), "%F %T.%6q", &tm);
+		ast_strftime(time_str, sizeof(time_str), "%s", &tm);
 		va_start(ap, fmt);
 		vsnprintf(qlog_msg, sizeof(qlog_msg), fmt, ap);
 		va_end(ap);
