@@ -1710,9 +1710,9 @@ static struct ast_vm_user *find_user_realtime(struct ast_vm_user *ivm, const cha
 			ast_copy_string(retval->mailbox, mailbox, sizeof(retval->mailbox));
 		}
 		if (!context && ast_test_flag((&globalflags), VM_SEARCH)) {
-			var = ast_load_realtime("voicemail", "mailbox", mailbox, SENTINEL);
+			var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "voicemail", "mailbox", mailbox, SENTINEL);
 		} else {
-			var = ast_load_realtime("voicemail", "mailbox", mailbox, "context", context, SENTINEL);
+			var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "voicemail", "mailbox", mailbox, "context", context, SENTINEL);
 		}
 		if (var) {
 			apply_options_full(retval, var);
@@ -3240,7 +3240,7 @@ static struct ast_vm_user *find_user_realtime_imapuser(const char *imapuser)
 	populate_defaults(vmu);
 	ast_set_flag(vmu, VM_ALLOCED);
 
-	var = ast_load_realtime("voicemail", "imapuser", imapuser, NULL);
+	var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "voicemail", "imapuser", imapuser, NULL);
 	if (var) {
 		apply_options_full(vmu, var);
 		ast_variables_destroy(var);
@@ -4759,7 +4759,7 @@ static void copy_plain_file(char *frompath, char *topath)
 	snprintf(topath2, sizeof(topath2), "%s.txt", topath);
 
 	if (ast_check_realtime("voicemail_data")) {
-		var = ast_load_realtime("voicemail_data", "filename", frompath, SENTINEL);
+		var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "voicemail_data", "filename", frompath, SENTINEL);
 		/* This cycle converts ast_variable linked list, to va_list list of arguments, may be there is a better way to do it? */
 		for (tmp = var; tmp; tmp = tmp->next) {
 			if (!strcasecmp(tmp->name, "origmailbox")) {
@@ -12882,7 +12882,7 @@ static char *show_users_realtime(int fd, const char *context)
 	struct ast_config *cfg;
 	const char *cat = NULL;
 
-	if (!(cfg = ast_load_realtime_multientry("voicemail",
+	if (!(cfg = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "voicemail",
 		"context", context, SENTINEL))) {
 		return CLI_FAILURE;
 	}

@@ -1599,7 +1599,7 @@ static struct mohclass *_moh_class_malloc(const char *file, int line, const char
 
 static struct ast_variable *load_realtime_musiconhold(const char *name)
 {
-	struct ast_variable *var = ast_load_realtime("musiconhold", "name", name, SENTINEL);
+	struct ast_variable *var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "musiconhold", "name", name, SENTINEL);
 
 	if (var) {
 		const char *mode = ast_variable_find_in_list(var, "mode");

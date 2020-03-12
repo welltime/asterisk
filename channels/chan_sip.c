@@ -5414,7 +5414,12 @@ static struct ast_variable *get_insecure_variable_from_sippeers(const char *colu
 {
 	struct ast_config *peerlist;
 	struct ast_variable *var = NULL;
-	if ((peerlist = ast_load_realtime_multientry("sippeers", column, value, "insecure LIKE", "%port%", SENTINEL))) {
+	peerlist = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_LIMIT_1, "sippeers",
+		column, value,
+		"insecure", "ANY(ARRAY['port','port,invite','invite,port'])",
+		SENTINEL
+	);
+	if (peerlist) {
 		if ((var = get_insecure_variable_from_config(peerlist))) {
 			/* Must clone, because var will get freed along with
 			 * peerlist. */
@@ -5437,12 +5442,12 @@ static struct ast_variable *get_insecure_variable_from_sipregs(const char *colum
 	char *regscat;
 	const char *regname;
 
-	if (!(regs = ast_load_realtime_multientry("sipregs", column, value, SENTINEL))) {
+	if (!(regs = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_LIMIT_1, "sipregs", column, value, SENTINEL))) {
 		return NULL;
 	}
 
 	/* Load *all* peers that are probably insecure=port */
-	if (!(peers = ast_load_realtime_multientry("sippeers", "insecure LIKE", "%port%", SENTINEL))) {
+	if (!(peers = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_LIMIT_1, "sippeers", "insecure LIKE", "%port%", SENTINEL))) {
 		ast_config_destroy(regs);
 		return NULL;
 	}
@@ -5509,13 +5514,13 @@ static const char *get_name_from_variable(const struct ast_variable *var)
 static int realtime_peer_by_name(const char *const *name, struct ast_sockaddr *addr, const char *ipaddr, struct ast_variable **var, struct ast_variable **varregs)
 {
 	/* Peer by name and host=dynamic */
-	if ((*var = ast_load_realtime("sippeers", "name", *name, "host", "dynamic", SENTINEL))) {
+	if ((*var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "sippeers", "name", *name, "host", "dynamic", SENTINEL))) {
 		;
 	/* Peer by name and host=IP */
-	} else if (addr && !(*var = ast_load_realtime("sippeers", "name", *name, "host", ipaddr, SENTINEL))) {
+	} else if (addr && !(*var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "sippeers", "name", *name, "host", ipaddr, SENTINEL))) {
 		;
 	/* Peer by name and host=HOSTNAME */
-	} else if ((*var = ast_load_realtime("sippeers", "name", *name, SENTINEL))) {
+	} else if ((*var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "sippeers", "name", *name, SENTINEL))) {
 		/*!\note
 		 * If this one loaded something, then we need to ensure that the host
 		 * field matched.  The only reason why we can't have this as a criteria
@@ -5547,7 +5552,7 @@ static int realtime_peer_by_name(const char *const *name, struct ast_sockaddr *a
 	/* Did we find anything? */
 	if (*var) {
 		if (varregs) {
-			*varregs = ast_load_realtime("sipregs", "name", *name, SENTINEL);
+			*varregs = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "sipregs", "name", *name, SENTINEL);
 		}
 		return 1;
 	}
@@ -5564,7 +5569,7 @@ static struct ast_variable *realtime_peer_get_sippeer_helper(const char **name, 
 	struct ast_variable *var = NULL;
 	const char *old_name = *name;
 	*name = get_name_from_variable(*varregs);
-	if (!*name || !(var = ast_load_realtime("sippeers", "name", *name, SENTINEL))) {
+	if (!*name || !(var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "sippeers", "name", *name, SENTINEL))) {
 		if (!*name) {
 			ast_log(LOG_WARNING, "Found sipreg but it has no name\n");
 		}
@@ -5587,17 +5592,17 @@ static int realtime_peer_by_addr(const char **name, struct ast_sockaddr *addr, c
 	*name = NULL;
 
 	/* First check for fixed IP hosts with matching callbackextensions, if specified */
-	if (!ast_strlen_zero(callbackexten) && (*var = ast_load_realtime("sippeers", "host", ipaddr, "port", portstring, "callbackextension", callbackexten, SENTINEL))) {
+	if (!ast_strlen_zero(callbackexten) && (*var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "sippeers", "host", ipaddr, "port", portstring, "callbackextension", callbackexten, SENTINEL))) {
 		;
 	/* Check for fixed IP hosts */
-	} else if ((*var = ast_load_realtime("sippeers", "host", ipaddr, "port", portstring, SENTINEL))) {
+	} else if ((*var = ast_load_realtime(SQL_SELECT_MODIFIER_LIMIT_1, "sippeers", "host", ipaddr, "port", portstring, SENTINEL))) {
 		;
 	/* Check for registered hosts (in sipregs) */
-	} else if (varregs && (*varregs = ast_load_realtime("sipregs", "ipaddr", ipaddr, "port", portstring, SENTINEL)) &&
+	} else if (varregs && (*varregs = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "sipregs", "ipaddr", ipaddr, "port", portstring, SENTINEL)) &&
 			(*var = realtime_peer_get_sippeer_helper(name, varregs))) {
 		;
 	/* Check for registered hosts (in sippeers) */
-	} else if (!varregs && (*var = ast_load_realtime("sippeers", "ipaddr", ipaddr, "port", portstring, SENTINEL))) {
+	} else if (!varregs && (*var = ast_load_realtime(SQL_SELECT_MODIFIER_LIMIT_1, "sippeers", "ipaddr", ipaddr, "port", portstring, SENTINEL))) {
 		;
 	/* We couldn't match on ipaddress and port, so we need to check if port is insecure */
 	} else if ((*var = get_insecure_variable_from_sippeers("host", ipaddr))) {
@@ -5636,7 +5641,7 @@ static int realtime_peer_by_addr(const char **name, struct ast_sockaddr *addr, c
 	 * ensuring that var is set when varregs is, is taken
 	 * care of by realtime_peer_get_sippeer_helper(). */
 	if (varregs && !*varregs) {
-		*varregs = ast_load_realtime("sipregs", "name", *name, SENTINEL);
+		*varregs = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "sipregs", "name", *name, SENTINEL);
 	}
 	return 1;
 }
@@ -5651,7 +5656,7 @@ static int register_realtime_peers_with_callbackextens(void)
 	}
 
 	/* This is hacky. We want name to be the cat, so it is the first property */
-	if (!(cfg = ast_load_realtime_multientry("sippeers", "name LIKE", "%", "callbackextension LIKE", "%", SENTINEL))) {
+	if (!(cfg = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "sippeers", "name LIKE", "%", "callbackextension LIKE", "%", SENTINEL))) {
 		return -1;
 	}
 

@@ -490,14 +490,14 @@ static struct ast_config *realtime_directory(char *context)
 	   and present in the requested context */
 	if (ast_strlen_zero(context) && (searchcontexts = ast_variable_retrieve(cfg, "general", "searchcontexts"))) {
 		if (ast_true(searchcontexts)) {
-			rtdata = ast_load_realtime_multientry("voicemail", "mailbox LIKE", "%", SENTINEL);
+			rtdata = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "voicemail", "mailbox LIKE", "%", SENTINEL);
 			context = NULL;
 		} else {
-			rtdata = ast_load_realtime_multientry("voicemail", "mailbox LIKE", "%", "context", "default", SENTINEL);
+			rtdata = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "voicemail", "mailbox LIKE", "%", "context", "default", SENTINEL);
 			context = "default";
 		}
 	} else if (!ast_strlen_zero(context)) {
-		rtdata = ast_load_realtime_multientry("voicemail", "mailbox LIKE", "%", "context", context, SENTINEL);
+		rtdata = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "voicemail", "mailbox LIKE", "%", "context", context, SENTINEL);
 	}
 
 	/* if there are no results, just return the entries from the config file */

@@ -4369,12 +4369,12 @@ static struct iax2_peer *realtime_peer(const char *peername, struct ast_sockaddr
 	str_port = ast_strdupa(ast_sockaddr_stringify_port(addr));
 
 	if (peername) {
-		var = ast_load_realtime("iaxpeers", "name", peername, "host", "dynamic", SENTINEL);
+		var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "iaxpeers", "name", peername, "host", "dynamic", SENTINEL);
 		if (!var && !ast_sockaddr_isnull(addr)) {
-			var = ast_load_realtime("iaxpeers", "name", peername, "host", str_addr, SENTINEL);
+			var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "iaxpeers", "name", peername, "host", str_addr, SENTINEL);
 		}
 	} else if (!ast_sockaddr_isnull(addr)) {
-		var = ast_load_realtime("iaxpeers", "ipaddr", str_addr, "port", str_port, SENTINEL);
+		var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "iaxpeers", "ipaddr", str_addr, "port", str_port, SENTINEL);
 		if (var) {
 			/* We'll need the peer name in order to build the structure! */
 			for (tmp = var; tmp; tmp = tmp->next) {
@@ -4384,7 +4384,7 @@ static struct iax2_peer *realtime_peer(const char *peername, struct ast_sockaddr
 		}
 	}
 	if (!var && peername) { /* Last ditch effort */
-		var = ast_load_realtime("iaxpeers", "name", peername, SENTINEL);
+		var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "iaxpeers", "name", peername, SENTINEL);
 		/*!\note
 		 * If this one loaded something, then we need to ensure that the host
 		 * field matched.  The only reason why we can't have this as a criteria
@@ -4498,16 +4498,16 @@ static struct iax2_user *realtime_user(const char *username, struct ast_sockaddr
 	str_addr = ast_strdupa(ast_sockaddr_stringify_addr(addr));
 	str_port = ast_strdupa(ast_sockaddr_stringify_port(addr));
 
-	var = ast_load_realtime("iaxusers", "name", username, "host", "dynamic", SENTINEL);
+	var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "iaxusers", "name", username, "host", "dynamic", SENTINEL);
 	if (!var)
-		var = ast_load_realtime("iaxusers", "name", username, "host", str_addr, SENTINEL);
+		var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "iaxusers", "name", username, "host", str_addr, SENTINEL);
 	if (!var && !ast_sockaddr_isnull(addr)) {
-		var = ast_load_realtime("iaxusers", "name", username, "ipaddr", str_addr, "port", str_port, SENTINEL);
+		var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "iaxusers", "name", username, "ipaddr", str_addr, "port", str_port, SENTINEL);
 		if (!var)
-			var = ast_load_realtime("iaxusers", "ipaddr", str_addr, "port", str_port, SENTINEL);
+			var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "iaxusers", "ipaddr", str_addr, "port", str_port, SENTINEL);
 	}
 	if (!var) { /* Last ditch effort */
-		var = ast_load_realtime("iaxusers", "name", username, SENTINEL);
+		var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "iaxusers", "name", username, SENTINEL);
 		/*!\note
 		 * If this one loaded something, then we need to ensure that the host
 		 * field matched.  The only reason why we can't have this as a criteria

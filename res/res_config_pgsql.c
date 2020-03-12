@@ -387,7 +387,7 @@ static struct columns *find_column(struct tables *t, const char *colname)
 #define IS_SQL_LIKE_CLAUSE(x) ((x) && ast_ends_with(x, " LIKE"))
 #define ESCAPE_CLAUSE (USE_BACKSLASH_AS_STRING ? " ESCAPE '\\'" : " ESCAPE '\\\\'")
 
-static struct ast_variable *realtime_pgsql(const char *database, const char *tablename, const struct ast_variable *fields)
+static struct ast_variable *realtime_pgsql(enum sql_select_modifier sql_select_modifier, const char *database, const char *tablename, const struct ast_variable *fields)
 {
 	RAII_VAR(PGresult *, result, NULL, PQclear);
 	int num_rows = 0, pgresult;
@@ -523,7 +523,7 @@ static struct ast_variable *realtime_pgsql(const char *database, const char *tab
 	return var;
 }
 
-static struct ast_config *realtime_multi_pgsql(const char *database, const char *table, const struct ast_variable *fields)
+static struct ast_config *realtime_multi_pgsql(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, const struct ast_variable *fields)
 {
 	RAII_VAR(PGresult *, result, NULL, PQclear);
 	int num_rows = 0, pgresult;

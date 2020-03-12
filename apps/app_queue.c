@@ -3003,7 +3003,7 @@ static int load_realtime_rules(void)
 		ast_log(LOG_WARNING, "Missing \"queue_rules\" in extconfig.conf\n");
 		return 0;
 	}
-	if (!(cfg = ast_load_realtime_multientry("queue_rules", "rule_name LIKE", "%", SENTINEL))) {
+	if (!(cfg = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "queue_rules", "rule_name LIKE", "%", SENTINEL))) {
 		ast_log(LOG_WARNING, "Failed to load queue rules from realtime\n");
 		return 0;
 	}
@@ -3717,9 +3717,9 @@ static struct call_queue *find_load_queue_rt_friendly(const char *queuename)
 		   Thus we might see an empty member list when a queue is
 		   deleted. In practise, this is unlikely to cause a problem. */
 
-		queue_vars = ast_load_realtime("queues", "name", queuename, SENTINEL);
+		queue_vars = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "queues", "name", queuename, SENTINEL);
 		if (queue_vars) {
-			member_config = ast_load_realtime_multientry("queue_members", "interface LIKE", "%", "queue_name", queuename, SENTINEL);
+			member_config = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "queue_members", "interface LIKE", "%", "queue_name", queuename, SENTINEL);
 			if (!member_config) {
 				ast_debug(1, "No queue_members defined in config extconfig.conf\n");
 				member_config = ast_config_new();
@@ -3773,7 +3773,7 @@ static void update_realtime_members(struct call_queue *q)
 	char *category = NULL;
 	struct ao2_iterator mem_iter;
 
-	if (!(member_config = ast_load_realtime_multientry("queue_members", "interface LIKE", "%", "queue_name", q->name , SENTINEL))) {
+	if (!(member_config = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "queue_members", "interface LIKE", "%", "queue_name", q->name , SENTINEL))) {
 		/* This queue doesn't have realtime members. If the queue still has any realtime
 		 * members in memory, they need to be removed.
 		 */
@@ -4197,7 +4197,7 @@ static void leave_queue(struct queue_ent *qe)
 	/*If the queue is a realtime queue, check to see if it's still defined in real time*/
 	if (q->realtime) {
 		struct ast_variable *var;
-		if (!(var = ast_load_realtime("queues", "name", q->name, SENTINEL))) {
+		if (!(var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "queues", "name", q->name, SENTINEL))) {
 			q->dead = 1;
 		} else {
 			ast_variables_destroy(var);
@@ -7829,7 +7829,7 @@ static int set_member_value(const char *queuename, const char *interface, int pr
 
 	if (ast_strlen_zero(queuename)) { /* This means we need to iterate through all the queues. */
 		if (ast_check_realtime("queues")) {
-			queue_config = ast_load_realtime_multientry("queues", "name LIKE", "%", SENTINEL);
+			queue_config = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "queues", "name LIKE", "%", SENTINEL);
 			if (queue_config) {
 				char *category = NULL;
 				while ((category = ast_category_browse(queue_config, category))) {
@@ -9049,7 +9049,7 @@ static int queue_function_queuegetchannel(struct ast_channel *chan, const char *
 		return 0;
 	}
 
-	var = ast_load_realtime("queues", "name", args.queuename, SENTINEL);
+	var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "queues", "name", args.queuename, SENTINEL);
 	if (var) {
 		/* if the queue is realtime but was not found in memory, this
 		 * means that the queue had been deleted from memory since it was
@@ -9084,7 +9084,7 @@ static int queue_function_queuewaitingcount(struct ast_channel *chan, const char
 		count = q->count;
 		ao2_unlock(q);
 		queue_t_unref(q, "Done with reference in QUEUE_WAITING_COUNT()");
-	} else if ((var = ast_load_realtime("queues", "name", data, SENTINEL))) {
+	} else if ((var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "queues", "name", data, SENTINEL))) {
 		/* if the queue is realtime but was not found in memory, this
 		 * means that the queue had been deleted from memory since it was
 		 * "dead." This means it has a 0 waiting count
@@ -9810,7 +9810,7 @@ static char *__queues_show(struct mansession *s, int fd, int argc, const char * 
 		/* This block is to find any queues which are defined in realtime but
 		 * which have not yet been added to the in-core container
 		 */
-		struct ast_config *cfg = ast_load_realtime_multientry("queues", "name LIKE", "%", SENTINEL);
+		struct ast_config *cfg = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "queues", "name LIKE", "%", SENTINEL);
 		if (cfg) {
 			char *category = NULL;
 			while ((category = ast_category_browse(cfg, category))) {
@@ -11457,7 +11457,7 @@ static int load_module(void)
 	 * This section is used to determine which name for 'ringinuse' to use in realtime members
 	 * Necessary for supporting older setups.
 	 */
-	member_config = ast_load_realtime_multientry("queue_members", "interface LIKE", "%", "queue_name LIKE", "%", SENTINEL);
+	member_config = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "queue_members", "interface LIKE", "%", "queue_name LIKE", "%", SENTINEL);
 	if (!member_config) {
 		realtime_ringinuse_field = "ringinuse";
 	} else {

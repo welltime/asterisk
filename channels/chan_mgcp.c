@@ -1703,7 +1703,7 @@ static struct mgcp_gateway *find_realtime_gw(char *name, char *at, struct sockad
 		return NULL;
 	}
 
-	if (!(mgcpgwconfig = ast_load_realtime("mgcpgw", "name", at, NULL))) {
+	if (!(mgcpgwconfig = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "mgcpgw", "name", at, NULL))) {
 		return NULL;
 	}
 
@@ -1736,7 +1736,7 @@ static struct mgcp_gateway *find_realtime_gw(char *name, char *at, struct sockad
 		);
 		AST_STANDARD_APP_ARGS(args, lines);
 		for (i = 0; i < args.argc; i++) {
-			gwv->next = ast_load_realtime("mgcpep", "name", at, "line", args.line[i], NULL);
+			gwv->next = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "mgcpep", "name", at, "line", args.line[i], NULL);
 
 			/* Remove "line" AND position gwv at the end of the list. */
 			for (epname = NULL; gwv->next; gwv = gwv->next) {
