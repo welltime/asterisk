@@ -24178,6 +24178,27 @@ static void handle_response_invite(struct sip_pvt *p, int resp, const char *rest
 			ast_party_redirecting_free(&redirecting);
 			sip_handle_cc(p, req, AST_CC_CCNR);
 		}
+		if (find_sdp(req)) {
+			if (p->invitestate != INV_CANCELLED) {
+				p->invitestate = INV_EARLY_MEDIA;
+			}
+			res = process_sdp(p, req, SDP_T38_NONE, FALSE);
+			if (!req->ignore && p->owner) {
+				/* Queue a progress frame */
+				ast_queue_control(p->owner, AST_CONTROL_PROGRESS);
+				/* We have not sent progress, but we have been sent progress so enable early media */
+				ast_set_flag(&p->flags[0], SIP_PROGRESS_SENT);
+			}
+			ast_rtp_instance_activate(p->rtp);
+		} else {
+			/* Alcatel PBXs are known to send 183s with no SDP after sending
+			* a 100 Trying response. We're just going to treat this sort of thing
+			* the same as we would treat a 180 Ringing
+			*/
+			if (!req->ignore && p->owner) {
+				ast_queue_control(p->owner, AST_CONTROL_RINGING);
+			}
+		}
 		sched_check_pendings(p);
 		break;
 
