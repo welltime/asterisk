@@ -1604,7 +1604,7 @@ static struct ast_variable *load_realtime_musiconhold(const char *name)
 	if (var) {
 		const char *mode = ast_variable_find_in_list(var, "mode");
 		if (ast_strings_equal(mode, "playlist")) {
-			struct ast_variable *entries = ast_load_realtime("musiconhold_entry", "name", name, SENTINEL);
+			struct ast_variable *entries = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "musiconhold_entry", "name", name, SENTINEL);
 			struct ast_variable *cur = entries;
 			size_t entry_count = 0;
 			for (; cur; cur = cur->next) {
