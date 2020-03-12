@@ -513,6 +513,11 @@ struct stasis_message_type *ast_channel_moh_start_type(void);
 struct stasis_message_type *ast_channel_moh_stop_type(void);
 
 /*!
+ * \brief Message type for a ATXFER_TIMEOUT message
+ */
+struct stasis_message_type *ast_channel_atxfer_timeout(void);
+
+/*!
  * \since 12.4.0
  * \brief Message type for a channel starting talking
  *
