@@ -65,6 +65,8 @@ enum ast_cel_event_type {
 	AST_CEL_BLINDTRANSFER = 11,
 	/*! \brief a transfer occurs */
 	AST_CEL_ATTENDEDTRANSFER = 12,
+	/*! \brief recall after attended transfer timeout */
+	AST_CEL_ATXFER_TIMEOUT = 19,
 	/*! \brief a user-defined event, the event name field should be set  */
 	AST_CEL_USER_DEFINED = 13,
 	/*! \brief the last channel with the given linkedid is retired  */

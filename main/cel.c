@@ -308,6 +308,7 @@ static const char * const cel_event_types[CEL_MAX_EVENT_IDS] = {
 	[AST_CEL_CHANNEL_END]      = "CHAN_END",
 	[AST_CEL_ANSWER]           = "ANSWER",
 	[AST_CEL_HANGUP]           = "HANGUP",
+        [AST_CEL_ATXFER_TIMEOUT]   = "ATXFER_TIMEOUT",
 	[AST_CEL_APP_START]        = "APP_START",
 	[AST_CEL_APP_END]          = "APP_END",
 	[AST_CEL_PARK_START]       = "PARK_START",
@@ -1377,6 +1378,35 @@ static void cel_attended_transfer_cb(
 	ast_json_unref(extra);
 }
 
+static void cel_attended_transfer_timeout_cb(
+        void *data, struct stasis_subscription *sub,
+        struct stasis_message *message)
+{
+	struct ast_multi_channel_blob *obj = stasis_message_data(message);
+	struct ast_channel_snapshot *recall = ast_multi_channel_blob_get_channel(obj, "recall");
+	struct ast_json *extra;
+	const char *channel2_name;
+	const char *channel2_uniqueid;
+
+	if (!recall) {
+	return;
+	}
+
+	channel2_name = ast_json_string_get(ast_json_object_get(ast_multi_channel_blob_get_json(obj), "channel2_name"));
+	channel2_uniqueid = ast_json_string_get(ast_json_object_get(ast_multi_channel_blob_get_json(obj), "channel2_uniqueid"));
+
+	extra = ast_json_pack("{s: s, s: s}",
+		"channel2_name", channel2_name,
+		"channel2_uniqueid", channel2_uniqueid);
+
+        if (!extra) {
+                return;
+        }
+
+        cel_report_event(recall, AST_CEL_ATXFER_TIMEOUT, stasis_message_timestamp(message), NULL, extra, NULL);
+        ast_json_unref(extra);
+}
+
 static void cel_pickup_cb(
 	void *data, struct stasis_subscription *sub,
 	struct stasis_message *message)
@@ -1597,6 +1627,11 @@ static int create_routes(void)
 		ast_attended_transfer_type(),
 		cel_attended_transfer_cb,
 		NULL);
+
+	ret |= stasis_message_router_add(cel_state_router,
+                ast_channel_atxfer_timeout(),
+                cel_attended_transfer_timeout_cb,
+                NULL);
 
 	ret |= stasis_message_router_add(cel_state_router,
 		ast_call_pickup_type(),
