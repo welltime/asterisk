@@ -5,12 +5,12 @@
 # be sure that Asterisk's environment has permission to write the
 # files required  for  its  operation, including logs, its comm
 # socket, the asterisk database, etc.
-#AST_USER="asterisk"
-#AST_GROUP="asterisk"
+AST_USER="asterisk"
+AST_GROUP="asterisk"
 
 # If you DON'T want Asterisk to start up with terminal colors, comment
 # this out.
-COLOR=yes
+#COLOR=yes
 
 # If you want Asterisk to run with a non-default configuration file,
 # uncomment the following option, and set the value appropriately.
