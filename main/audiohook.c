@@ -272,7 +272,7 @@ static struct ast_frame *audiohook_read_frame_both(struct ast_audiohook *audioho
 
 	if (!usable_read && !usable_write) {
 		/* If both factories are unusable bail out */
-		ast_debug(1, "Read factory %p and write factory %p both fail to provide %zu samples\n", &audiohook->read_factory, &audiohook->write_factory, samples);
+		ast_debug(2, "Read factory %p and write factory %p both fail to provide %zu samples\n", &audiohook->read_factory, &audiohook->write_factory, samples);
 		return NULL;
 	}
 
@@ -309,7 +309,7 @@ static struct ast_frame *audiohook_read_frame_both(struct ast_audiohook *audioho
 			}
 		}
 	} else {
-		ast_debug(1, "Failed to get %d samples from read factory %p\n", (int)samples, &audiohook->read_factory);
+		ast_debug(2, "Failed to get %d samples from read factory %p\n", (int)samples, &audiohook->read_factory);
 	}
 
 	/* Move on to the write factory... if there are enough samples, read them in */
@@ -333,7 +333,7 @@ static struct ast_frame *audiohook_read_frame_both(struct ast_audiohook *audioho
 			}
 		}
 	} else {
-		ast_debug(1, "Failed to get %d samples from write factory %p\n", (int)samples, &audiohook->write_factory);
+		ast_debug(2, "Failed to get %d samples from write factory %p\n", (int)samples, &audiohook->write_factory);
 	}
 
 	frame.subclass.format = ast_format_cache_get_slin_by_rate(audiohook->hook_internal_samp_rate);
