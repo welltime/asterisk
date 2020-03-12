@@ -2218,7 +2218,7 @@ static void queue_publish_multi_channel_snapshot_blob(struct stasis_topic *topic
 }
 
 static void queue_publish_multi_channel_blob(struct ast_channel *caller, struct ast_channel *agent,
-		struct stasis_message_type *type, struct ast_json *blob)
+		struct stasis_message_type *type, struct ast_json *blob, struct ast_json *cel_agentcalled_json)
 {
 	RAII_VAR(struct ast_channel_snapshot *, caller_snapshot, NULL, ao2_cleanup);
 	RAII_VAR(struct ast_channel_snapshot *, agent_snapshot, NULL, ao2_cleanup);
@@ -2232,6 +2232,23 @@ static void queue_publish_multi_channel_blob(struct ast_channel *caller, struct 
 
 	if (!caller_snapshot || !agent_snapshot) {
 		return;
+	}
+
+	if (cel_agentcalled_json) {
+
+		RAII_VAR(struct ast_multi_channel_blob *, payload, NULL, ao2_cleanup);
+		RAII_VAR(struct stasis_message *, msg, NULL, ao2_cleanup);
+
+		payload = ast_multi_channel_blob_create(cel_agentcalled_json);
+		if (!payload) {
+			return;
+		}
+
+		ast_multi_channel_blob_add_channel(payload, "channel", agent_snapshot);
+
+		msg = stasis_message_create(ast_queue_agent_called_type(), payload);
+
+		stasis_publish(ast_channel_topic(caller), msg);
 	}
 
 	queue_publish_multi_channel_snapshot_blob(ast_channel_topic(caller), caller_snapshot,
@@ -4480,6 +4497,7 @@ static int ring_entry(struct queue_ent *qe, struct callattempt *tmp, int *busies
 	const char *macrocontext, *macroexten;
 	struct ast_format_cap *nativeformats;
 	RAII_VAR(struct ast_json *, blob, NULL, ast_json_unref);
+	RAII_VAR(struct ast_json *, cel_agentcalled_json, NULL, ast_json_unref);
 
 	/* on entry here, we know that tmp->chan == NULL */
 	if (!can_ring_entry(qe, tmp)) {
@@ -4594,7 +4612,14 @@ static int ring_entry(struct queue_ent *qe, struct callattempt *tmp, int *busies
 			     "Queue", qe->parent->name,
 			     "Interface", tmp->interface,
 			     "MemberName", tmp->member->membername);
-	queue_publish_multi_channel_blob(qe->chan, tmp->chan, queue_agent_called_type(), blob);
+	cel_agentcalled_json = ast_json_pack("{s: s, s: s, s: s, s: s, s: s}",
+				"MemberName", tmp->member->membername,
+				"CallerChan", ast_channel_name(qe->chan),
+				"CallerNum", S_COR(ast_channel_caller(qe->chan)->id.number.valid, ast_channel_caller(qe->chan)->id.number.str, ""),
+				"CallerName", S_COR(ast_channel_caller(qe->chan)->id.name.valid, ast_channel_caller(qe->chan)->id.name.str, ""),
+				"Queue", qe->parent->name);
+
+	queue_publish_multi_channel_blob(qe->chan, tmp->chan, queue_agent_called_type(), blob, cel_agentcalled_json);
 
 	ast_channel_publish_dial(qe->chan, tmp->chan, tmp->interface, NULL);
 
@@ -4967,7 +4992,7 @@ static void rna(int rnatime, struct queue_ent *qe, struct ast_channel *peer, cha
 			     "Interface", interface,
 			     "MemberName", membername,
 			     "RingTime", rnatime);
-	queue_publish_multi_channel_blob(qe->chan, peer, queue_agent_ringnoanswer_type(), blob);
+	queue_publish_multi_channel_blob(qe->chan, peer, queue_agent_ringnoanswer_type(), blob, NULL);
 
 	ast_queue_log(qe->parent->name, ast_channel_uniqueid(qe->chan), membername, "RINGNOANSWER", "%d", rnatime);
 	if (qe->parent->autopause != QUEUE_AUTOPAUSE_OFF && autopause) {
@@ -7125,7 +7150,7 @@ static int try_calling(struct queue_ent *qe, struct ast_flags opts, char **opt_a
 						     "Queue", queuename,
 						     "Interface", member->interface,
 						     "MemberName", member->membername);
-				queue_publish_multi_channel_blob(qe->chan, peer, queue_agent_dump_type(), blob);
+				queue_publish_multi_channel_blob(qe->chan, peer, queue_agent_dump_type(), blob, NULL);
 
 				ast_channel_publish_dial(qe->chan, peer, member->interface, ast_hangup_cause_to_dial_status(ast_channel_hangupcause(peer)));
 				ast_autoservice_chan_hangup_peer(qe->chan, peer);
@@ -7322,7 +7347,7 @@ static int try_calling(struct queue_ent *qe, struct ast_flags opts, char **opt_a
 				     "MemberName", member->membername,
 				     "HoldTime", (ast_json_int_t)(time(NULL) - qe->start),
 				     "RingTime", (ast_json_int_t)(orig - to > 0 ? (orig - to) / 1000 : 0));
-		queue_publish_multi_channel_blob(qe->chan, peer, queue_agent_connect_type(), blob);
+		queue_publish_multi_channel_blob(qe->chan, peer, queue_agent_connect_type(), blob, NULL);
 
 		ast_copy_string(oldcontext, ast_channel_context(qe->chan), sizeof(oldcontext));
 		ast_copy_string(oldexten, ast_channel_exten(qe->chan), sizeof(oldexten));

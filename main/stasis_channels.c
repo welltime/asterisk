@@ -1329,6 +1329,7 @@ STASIS_MESSAGE_TYPE_DEFN(ast_channel_talking_stop,
 	.to_ami = talking_stop_to_ami,
 	.to_json = talking_stop_to_json,
 	);
+STASIS_MESSAGE_TYPE_DEFN(ast_queue_agent_called_type);
 
 /*! @} */
 
@@ -1362,6 +1363,7 @@ static void stasis_channels_cleanup(void)
 	STASIS_MESSAGE_TYPE_CLEANUP(ast_channel_agent_logoff_type);
 	STASIS_MESSAGE_TYPE_CLEANUP(ast_channel_talking_start);
 	STASIS_MESSAGE_TYPE_CLEANUP(ast_channel_talking_stop);
+	STASIS_MESSAGE_TYPE_CLEANUP(ast_queue_agent_called_type);
 }
 
 int ast_stasis_channels_init(void)
@@ -1411,6 +1413,7 @@ int ast_stasis_channels_init(void)
 	res |= STASIS_MESSAGE_TYPE_INIT(ast_channel_monitor_stop_type);
 	res |= STASIS_MESSAGE_TYPE_INIT(ast_channel_talking_start);
 	res |= STASIS_MESSAGE_TYPE_INIT(ast_channel_talking_stop);
+	res |= STASIS_MESSAGE_TYPE_INIT(ast_queue_agent_called_type);
 
 	return res;
 }

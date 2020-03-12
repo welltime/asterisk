@@ -529,6 +529,11 @@ struct stasis_message_type *ast_channel_talking_start(void);
 struct stasis_message_type *ast_channel_talking_stop(void);
 
 /*!
+* \brief Message type for a AGENTCALLED message
+*  */
+struct stasis_message_type *ast_queue_agent_called_type(void);
+
+/*!
  * \since 12
  * \brief Publish in the \ref ast_channel_topic or \ref ast_channel_topic_all
  * topics a stasis message for the channels involved in a dial operation.
