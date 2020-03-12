@@ -63,7 +63,7 @@ static char *cli_realtime_load(struct ast_cli_entry *e, int cmd, struct ast_cli_
 	if (a->argc < 5)
 		return CLI_SHOWUSAGE;
 
-	var = ast_load_realtime_all(a->argv[2], a->argv[3], a->argv[4], SENTINEL);
+	var = ast_load_realtime_all(SQL_SELECT_MODIFIER_NOTHING, a->argv[2], a->argv[3], a->argv[4], SENTINEL);
 
 	if (var) {
 		ast_cli(a->fd, CRL_HEADER_FORMAT, "Column Name", "Column Value");

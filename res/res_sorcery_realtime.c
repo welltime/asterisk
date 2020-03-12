@@ -167,7 +167,7 @@ static void *sorcery_realtime_retrieve_fields(const struct ast_sorcery *sorcery,
 	RAII_VAR(struct ast_variable *, id, NULL, ast_variables_destroy);
 	void *object = NULL;
 
-	if (!(objectset = ast_load_realtime_fields(config->family, fields))) {
+	if (!(objectset = ast_load_realtime_fields(SQL_SELECT_MODIFIER_NOTHING, config->family, fields))) {
 		return NULL;
 	}
 
@@ -222,7 +222,7 @@ static void sorcery_realtime_retrieve_multiple(const struct ast_sorcery *sorcery
 		fields = all;
 	}
 
-	if (!(rows = ast_load_realtime_multientry_fields(config->family, fields))) {
+	if (!(rows = ast_load_realtime_multientry_fields(SQL_SELECT_MODIFIER_NOTHING, config->family, fields))) {
 		return;
 	}
 

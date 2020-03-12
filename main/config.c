@@ -3263,7 +3263,7 @@ static int realtime_arguments_to_fields2(va_list ap, int skip, struct ast_variab
 	return 0;
 }
 
-struct ast_variable *ast_load_realtime_all_fields(const char *family, const struct ast_variable *fields)
+struct ast_variable *ast_load_realtime_all_fields(enum sql_select_modifier sql_select_modifier, const char *family, const struct ast_variable *fields)
 {
 	struct ast_config_engine *eng;
 	char db[256];
@@ -3273,7 +3273,7 @@ struct ast_variable *ast_load_realtime_all_fields(const char *family, const stru
 
 	for (i = 1; ; i++) {
 		if ((eng = find_engine(family, i, db, sizeof(db), table, sizeof(table)))) {
-			if (eng->realtime_func && (res = eng->realtime_func(db, table, fields))) {
+			if (eng->realtime_func && (res = eng->realtime_func(sql_select_modifier, db, table, fields))) {
 				return res;
 			}
 		} else {
@@ -3284,7 +3284,7 @@ struct ast_variable *ast_load_realtime_all_fields(const char *family, const stru
 	return res;
 }
 
-struct ast_variable *ast_load_realtime_all(const char *family, ...)
+struct ast_variable *ast_load_realtime_all(enum sql_select_modifier sql_select_modifier, const char *family, ...)
 {
 	RAII_VAR(struct ast_variable *, fields, NULL, ast_variables_destroy);
 	struct ast_variable *res = NULL;
@@ -3295,19 +3295,19 @@ struct ast_variable *ast_load_realtime_all(const char *family, ...)
 	va_end(ap);
 
 	if (fields) {
-		res = ast_load_realtime_all_fields(family, fields);
+		res = ast_load_realtime_all_fields(sql_select_modifier, family, fields);
 	}
 
 	return res;
 }
 
-struct ast_variable *ast_load_realtime_fields(const char *family, const struct ast_variable *fields)
+struct ast_variable *ast_load_realtime_fields(enum sql_select_modifier sql_select_modifier, const char *family, const struct ast_variable *fields)
 {
 	struct ast_variable *res;
 	struct ast_variable *cur;
 	struct ast_variable **prev;
 
-	res = ast_load_realtime_all_fields(family, fields);
+	res = ast_load_realtime_all_fields(sql_select_modifier, family, fields);
 
 	/* Filter the list. */
 	prev = &res;
@@ -3336,7 +3336,7 @@ struct ast_variable *ast_load_realtime_fields(const char *family, const struct a
 	return res;
 }
 
-struct ast_variable *ast_load_realtime(const char *family, ...)
+struct ast_variable *ast_load_realtime(enum sql_select_modifier sql_select_modifier, const char *family, ...)
 {
 	RAII_VAR(struct ast_variable *, fields, NULL, ast_variables_destroy);
 	int field_res = 0;
@@ -3356,7 +3356,7 @@ struct ast_variable *ast_load_realtime(const char *family, ...)
 		return NULL;
 	}
 
-	return ast_load_realtime_fields(family, fields);
+	return ast_load_realtime_fields(sql_select_modifier, family, fields);
 }
 
 /*! \brief Check if realtime engine is configured for family */
@@ -3423,7 +3423,7 @@ int ast_unload_realtime(const char *family)
 	return res;
 }
 
-struct ast_config *ast_load_realtime_multientry_fields(const char *family, const struct ast_variable *fields)
+struct ast_config *ast_load_realtime_multientry_fields(enum sql_select_modifier sql_select_modifier, const char *family, const struct ast_variable *fields)
 {
 	struct ast_config_engine *eng;
 	char db[256];
@@ -3433,7 +3433,7 @@ struct ast_config *ast_load_realtime_multientry_fields(const char *family, const
 
 	for (i = 1; ; i++) {
 		if ((eng = find_engine(family, i, db, sizeof(db), table, sizeof(table)))) {
-			if (eng->realtime_multi_func && (res = eng->realtime_multi_func(db, table, fields))) {
+			if (eng->realtime_multi_func && (res = eng->realtime_multi_func(sql_select_modifier, db, table, fields))) {
 				/* If we were returned an empty cfg, destroy it and return NULL */
 				if (!res->root) {
 					ast_config_destroy(res);
@@ -3449,7 +3449,7 @@ struct ast_config *ast_load_realtime_multientry_fields(const char *family, const
 	return res;
 }
 
-struct ast_config *ast_load_realtime_multientry(const char *family, ...)
+struct ast_config *ast_load_realtime_multientry(enum sql_select_modifier sql_select_modifier, const char *family, ...)
 {
 	RAII_VAR(struct ast_variable *, fields, NULL, ast_variables_destroy);
 	va_list ap;
@@ -3462,7 +3462,7 @@ struct ast_config *ast_load_realtime_multientry(const char *family, ...)
 		return NULL;
 	}
 
-	return ast_load_realtime_multientry_fields(family, fields);
+	return ast_load_realtime_multientry_fields(sql_select_modifier, family, fields);
 }
 
 int ast_update_realtime_fields(const char *family, const char *keyfield, const char *lookup, const struct ast_variable *fields)

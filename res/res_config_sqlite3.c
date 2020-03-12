@@ -61,8 +61,8 @@
 static int has_explicit_like_escaping;
 
 static struct ast_config *realtime_sqlite3_load(const char *database, const char *table, const char *configfile, struct ast_config *config, struct ast_flags flags, const char *suggested_include_file, const char *who_asked);
-static struct ast_variable *realtime_sqlite3(const char *database, const char *table, const struct ast_variable *fields);
-static struct ast_config *realtime_sqlite3_multi(const char *database, const char *table, const struct ast_variable *fields);
+static struct ast_variable *realtime_sqlite3(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, const struct ast_variable *fields);
+static struct ast_config *realtime_sqlite3_multi(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, const struct ast_variable *fields);
 static int realtime_sqlite3_update(const char *database, const char *table, const char *keyfield, const char *entity, const struct ast_variable *fields);
 static int realtime_sqlite3_update2(const char *database, const char *table, const struct ast_variable *lookup_fields, const struct ast_variable *update_fields);
 static int realtime_sqlite3_store(const char *database, const char *table, const struct ast_variable *fields);
@@ -848,7 +848,7 @@ static int realtime_sqlite3_helper(const char *database, const char *table, cons
 /*! \brief Realtime callback for a single row query
  * \return ast_variable list for single result on success, NULL on empty/failure
  */
-static struct ast_variable *realtime_sqlite3(const char *database, const char *table, const struct ast_variable *fields)
+static struct ast_variable *realtime_sqlite3(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, const struct ast_variable *fields)
 {
 	struct ast_variable *result_row = NULL;
 
@@ -860,7 +860,7 @@ static struct ast_variable *realtime_sqlite3(const char *database, const char *t
 /*! \brief Realtime callback for a multi-row query
  * \return ast_config containing possibly many results on success, NULL on empty/failure
  */
-static struct ast_config *realtime_sqlite3_multi(const char *database, const char *table, const struct ast_variable *fields)
+static struct ast_config *realtime_sqlite3_multi(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, const struct ast_variable *fields)
 {
 	struct ast_config *cfg;
 

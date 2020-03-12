@@ -56,7 +56,7 @@ AST_THREADSTORAGE(result_buf);
  * \retval var on success
  * \retval NULL on failure
 */
-static struct ast_variable *realtime_curl(const char *url, const char *unused, const struct ast_variable *fields)
+static struct ast_variable *realtime_curl(enum sql_select_modifier sql_select_modifier, const char *url, const char *unused, const struct ast_variable *fields)
 {
 	struct ast_str *query, *buffer;
 	char buf1[256], buf2[256];
@@ -127,7 +127,7 @@ static struct ast_variable *realtime_curl(const char *url, const char *unused, c
  * \retval struct ast_config pointer on success
  * \retval NULL on failure
 */
-static struct ast_config *realtime_multi_curl(const char *url, const char *unused, const struct ast_variable *fields)
+static struct ast_config *realtime_multi_curl(enum sql_select_modifier sql_select_modifier, const char *url, const char *unused, const struct ast_variable *fields)
 {
 	struct ast_str *query, *buffer;
 	char buf1[256], buf2[256];

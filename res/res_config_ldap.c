@@ -1000,7 +1000,7 @@ static struct ast_variable **realtime_ldap_base(unsigned int *entries_count_ptr,
  *
  * For Realtime Dynamic(i.e., switch, queues, and directory)
  */
-static struct ast_variable *realtime_ldap(const char *basedn,
+static struct ast_variable *realtime_ldap(enum sql_select_modifier sql_select_modifier, const char *basedn,
 					  const char *table_name, const struct ast_variable *fields)
 {
 	struct ast_variable **vars = realtime_ldap_base_ap(NULL, basedn, table_name, fields);
@@ -1035,7 +1035,7 @@ static struct ast_variable *realtime_ldap(const char *basedn,
  * this is an area of asterisk that could do with a lot of modification
  * I think this function returns Realtime dynamic objects
  */
-static struct ast_config *realtime_multi_ldap(const char *basedn,
+static struct ast_config *realtime_multi_ldap(enum sql_select_modifier sql_select_modifier, const char *basedn,
       const char *table_name, const struct ast_variable *fields)
 {
 	char *op;
