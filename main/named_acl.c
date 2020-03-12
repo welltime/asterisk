@@ -249,9 +249,9 @@ static struct named_acl *named_acl_find_realtime(const char *name)
 	systemname = ast_config_AST_SYSTEM_NAME;
 
 	if (ast_strlen_zero(systemname)) {
-		cfg = ast_load_realtime_multientry(ACL_FAMILY, "name", name, SENTINEL);
+		cfg = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, ACL_FAMILY, "name", name, SENTINEL);
 	} else {
-		cfg = ast_load_realtime_multientry(ACL_FAMILY, "name", name, "systemname", systemname, SENTINEL);
+		cfg = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, ACL_FAMILY, "name", name, "systemname", systemname, SENTINEL);
 	}
 
 	if (!cfg) {
