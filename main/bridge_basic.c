@@ -2505,6 +2505,31 @@ static int recalling_enter(struct attended_transfer_properties *props)
 	ao2_ref(props, +1);
 	ast_dial_set_user_data(props->dial, props);
 
+	RAII_VAR(struct ast_json *, cel_atxfer_timeout_json, NULL, ast_json_unref);
+	cel_atxfer_timeout_json = ast_json_pack("{s: s, s: s}",
+		"channel2_name", ast_channel_name(props->transferer),
+		"channel2_uniqueid", ast_channel_uniqueid(props->transferer));
+
+	if (cel_atxfer_timeout_json) {
+
+		RAII_VAR(struct ast_channel_snapshot *, recall_snapshot, NULL, ao2_cleanup);
+		RAII_VAR(struct ast_multi_channel_blob *, payload, NULL, ao2_cleanup);
+		RAII_VAR(struct stasis_message *, msg, NULL, ao2_cleanup);
+		
+		recall_snapshot = ast_channel_snapshot_create(recall);
+
+		payload = ast_multi_channel_blob_create(cel_atxfer_timeout_json);
+		if (!payload) {
+			return -1;
+		}
+
+		ast_multi_channel_blob_add_channel(payload, "recall", recall_snapshot);
+
+		msg = stasis_message_create(ast_channel_atxfer_timeout(), payload);
+
+		stasis_publish(ast_channel_topic(recall), msg);
+        }
+
 	if (ast_dial_run(props->dial, NULL, 1) == AST_DIAL_RESULT_FAILED) {
 		ao2_ref(props, -1);
 		return -1;
