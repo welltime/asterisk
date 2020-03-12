@@ -1247,7 +1247,7 @@ static struct call_followme *find_realtime(const char *name)
 		return NULL;
 	}
 
-	var = ast_load_realtime("followme", "name", name, SENTINEL);
+	var = ast_load_realtime(SQL_SELECT_MODIFIER_NOTHING, "followme", "name", name, SENTINEL);
 	if (!var) {
 		ast_free(str);
 		return NULL;
@@ -1278,7 +1278,7 @@ static struct call_followme *find_realtime(const char *name)
 	new_follower->realtime = 1;
 
 	/* Load numbers */
-	cfg = ast_load_realtime_multientry("followme_numbers", "ordinal LIKE", "%", "name",
+	cfg = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_NOTHING, "followme_numbers", "ordinal LIKE", "%", "name",
 		name, SENTINEL);
 	if (!cfg) {
 		ast_mutex_destroy(&new_follower->lock);
