@@ -318,6 +318,7 @@ static const char * const cel_event_types[CEL_MAX_EVENT_IDS] = {
 	[AST_CEL_BLINDTRANSFER]    = "BLINDTRANSFER",
 	[AST_CEL_ATTENDEDTRANSFER] = "ATTENDEDTRANSFER",
 	[AST_CEL_PICKUP]           = "PICKUP",
+	[AST_CEL_AGENTCALLED]      = "AGENTCALLED",
 	[AST_CEL_FORWARD]          = "FORWARD",
 	[AST_CEL_LINKEDID_END]     = "LINKEDID_END",
 	[AST_CEL_LOCAL_OPTIMIZE]   = "LOCAL_OPTIMIZE",
@@ -1424,6 +1425,44 @@ static void cel_local_cb(
 	ast_json_unref(extra);
 }
 
+static void cel_queue_agent_called_cb(
+        void *data, struct stasis_subscription *sub,
+        struct stasis_message *message)
+{
+        struct ast_multi_channel_blob *obj = stasis_message_data(message);
+        struct ast_channel_snapshot *channel = ast_multi_channel_blob_get_channel(obj, "channel");
+        struct ast_json *extra;
+	const char *membername;
+	const char *callerchan;
+	const char *callernum;
+	const char *callername;
+	const char *queue;
+
+	if (!channel) {
+		return;
+	}
+
+	membername = ast_json_string_get(ast_json_object_get(ast_multi_channel_blob_get_json(obj), "MemberName"));
+	callerchan = ast_json_string_get(ast_json_object_get(ast_multi_channel_blob_get_json(obj), "CallerChan"));
+	callernum = ast_json_string_get(ast_json_object_get(ast_multi_channel_blob_get_json(obj), "CallerNum"));
+	callername = ast_json_string_get(ast_json_object_get(ast_multi_channel_blob_get_json(obj), "CallerName"));
+	queue = ast_json_string_get(ast_json_object_get(ast_multi_channel_blob_get_json(obj), "Queue"));
+
+        extra = ast_json_pack("{s: s, s: s, s: s, s: s, s: s}",
+                "MemberName", membername,
+		"CallerChan", callerchan,
+		"CallerNum", callernum,
+                "CallerName", callername,
+		"Queue", queue);
+
+        if (!extra) {
+                return;
+        }
+
+        cel_report_event(channel, AST_CEL_AGENTCALLED, stasis_message_timestamp(message), NULL, extra, NULL);
+        ast_json_unref(extra);
+}
+
 static void destroy_routes(void)
 {
 	stasis_message_router_unsubscribe_and_join(cel_state_router);
@@ -1568,6 +1607,11 @@ static int create_routes(void)
 		ast_local_optimization_end_type(),
 		cel_local_cb,
 		NULL);
+
+        ret |= stasis_message_router_add(cel_state_router,
+                ast_queue_agent_called_type(),
+                cel_queue_agent_called_cb,
+                NULL);
 
 	if (ret) {
 		ast_log(AST_LOG_ERROR, "Failed to register for Stasis messages\n");
