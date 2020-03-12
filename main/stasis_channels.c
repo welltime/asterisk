@@ -1308,6 +1308,7 @@ STASIS_MESSAGE_TYPE_DEFN(ast_channel_unhold_type,
 	.to_json = unhold_to_json,
 	);
 STASIS_MESSAGE_TYPE_DEFN(ast_channel_flash_type);
+STASIS_MESSAGE_TYPE_DEFN(ast_channel_atxfer_timeout);
 STASIS_MESSAGE_TYPE_DEFN(ast_channel_chanspy_start_type);
 STASIS_MESSAGE_TYPE_DEFN(ast_channel_chanspy_stop_type);
 STASIS_MESSAGE_TYPE_DEFN(ast_channel_fax_type);
@@ -1356,6 +1357,7 @@ static void stasis_channels_cleanup(void)
 	STASIS_MESSAGE_TYPE_CLEANUP(ast_channel_flash_type);
 	STASIS_MESSAGE_TYPE_CLEANUP(ast_channel_hold_type);
 	STASIS_MESSAGE_TYPE_CLEANUP(ast_channel_unhold_type);
+	STASIS_MESSAGE_TYPE_CLEANUP(ast_channel_atxfer_timeout);
 	STASIS_MESSAGE_TYPE_CLEANUP(ast_channel_chanspy_start_type);
 	STASIS_MESSAGE_TYPE_CLEANUP(ast_channel_chanspy_stop_type);
 	STASIS_MESSAGE_TYPE_CLEANUP(ast_channel_fax_type);
@@ -1412,6 +1414,7 @@ int ast_stasis_channels_init(void)
 	res |= STASIS_MESSAGE_TYPE_INIT(ast_channel_flash_type);
 	res |= STASIS_MESSAGE_TYPE_INIT(ast_channel_hold_type);
 	res |= STASIS_MESSAGE_TYPE_INIT(ast_channel_unhold_type);
+	res |= STASIS_MESSAGE_TYPE_INIT(ast_channel_atxfer_timeout);
 	res |= STASIS_MESSAGE_TYPE_INIT(ast_channel_chanspy_start_type);
 	res |= STASIS_MESSAGE_TYPE_INIT(ast_channel_chanspy_stop_type);
 	res |= STASIS_MESSAGE_TYPE_INIT(ast_channel_fax_type);
