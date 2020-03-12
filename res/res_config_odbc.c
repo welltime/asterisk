@@ -167,7 +167,7 @@ static SQLHSTMT custom_prepare(struct odbc_obj *obj, void *data)
  * \retval var on success
  * \retval NULL on failure
  */
-static struct ast_variable *realtime_odbc(const char *database, const char *table, const struct ast_variable *fields)
+static struct ast_variable *realtime_odbc(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, const struct ast_variable *fields)
 {
 	struct odbc_obj *obj;
 	SQLHSTMT stmt;
@@ -209,6 +209,16 @@ static struct ast_variable *realtime_odbc(const char *database, const char *tabl
 		ast_str_append(&sql, 0, " AND %s%s ?%s", field->name, op,
 			strcasestr(field->name, "LIKE") && !ast_odbc_backslash_is_escape(obj) ? " ESCAPE '\\\\'" : "");
 	}
+
+	switch (sql_select_modifier) {
+		case SQL_SELECT_MODIFIER_NOTHING:
+			break;
+		case SQL_SELECT_MODIFIER_LIMIT_1:
+                        ast_str_append(&sql, 0, " LIMIT 1");
+			break;
+		default:
+			ast_log(LOG_ERROR, "realtime_odbc: unimplemented sql_select_modifier case\n");
+	};
 
 	cps.sql = ast_str_buffer(sql);
 
@@ -339,7 +349,7 @@ static struct ast_variable *realtime_odbc(const char *database, const char *tabl
  * \retval var on success
  * \retval NULL on failure
  */
-static struct ast_config *realtime_multi_odbc(const char *database, const char *table, const struct ast_variable *fields)
+static struct ast_config *realtime_multi_odbc(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, const struct ast_variable *fields)
 {
 	struct odbc_obj *obj;
 	SQLHSTMT stmt;
@@ -388,7 +398,17 @@ static struct ast_config *realtime_multi_odbc(const char *database, const char *
 		ast_str_append(&sql, 0, " AND %s%s ?%s", field->name, op,
 			strcasestr(field->name, "LIKE") && !ast_odbc_backslash_is_escape(obj) ? " ESCAPE '\\\\'" : "");
 	}
-	ast_str_append(&sql, 0, " ORDER BY %s", initfield);
+
+ 	switch (sql_select_modifier) {
+		case SQL_SELECT_MODIFIER_NOTHING:
+			ast_str_append(&sql, 0, " ORDER BY %s", initfield);
+			break;
+		case SQL_SELECT_MODIFIER_LIMIT_1:
+			ast_str_append(&sql, 0, " LIMIT 1");
+			break;
+		default:
+			ast_log(LOG_ERROR, "realtime_odbc: unimplemented sql_select_modifier case\n");
+	};
 
 	cps.sql = ast_str_buffer(sql);
 

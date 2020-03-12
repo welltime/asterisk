@@ -307,7 +307,8 @@ static char *decode_chunk(char *chunk)
 /* MySQL requires us to escape the escape... yo dawg */
 static char *ESCAPE_CLAUSE = " ESCAPE '\\\\'";
 
-static struct ast_variable *realtime_mysql(const char *database, const char *table, const struct ast_variable *rt_fields)
+static struct ast_variable *realtime_mysql(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, const struct ast_variable *rt_fields)
+
 {
 	struct mysql_conn *dbh;
 	MYSQL_RES *result;
@@ -417,7 +418,8 @@ static struct ast_variable *realtime_mysql(const char *database, const char *tab
 	return var;
 }
 
-static struct ast_config *realtime_multi_mysql(const char *database, const char *table, const struct ast_variable *rt_fields)
+static struct ast_config *realtime_multi_mysql(enum sql_select_modifier sql_select_modifier, const char *database, const char *table, const struct ast_variable *rt_fields)
+
 {
 	struct mysql_conn *dbh;
 	MYSQL_RES *result;
