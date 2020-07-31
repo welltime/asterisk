@@ -33,7 +33,10 @@ ALL_C_MODS:=app_mysql \
             chan_mobile \
             chan_ooh323 \
             format_mp3 \
-            res_config_mysql
+            res_config_mysql \
+            res_json
+
+res_json.so: cJSON.o res_json.o
 
 all: check_mp3 _all
 
