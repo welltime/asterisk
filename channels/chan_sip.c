@@ -5416,7 +5416,7 @@ static struct ast_variable *get_insecure_variable_from_sippeers(const char *colu
 	struct ast_variable *var = NULL;
 	peerlist = ast_load_realtime_multientry(SQL_SELECT_MODIFIER_LIMIT_1, "sippeers",
 		column, value,
-		"insecure", "ANY(ARRAY['port','port,invite','invite,port'])",
+		"insecure LIKE", "%port%",
 		SENTINEL
 	);
 	if (peerlist) {
