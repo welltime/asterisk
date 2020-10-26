@@ -386,7 +386,7 @@ static int jsonelement_exec(struct ast_channel *chan,
 		case cJSON_NULL: type = ast_strdupa("null"); ast_copy_string(buffer, "", buflen); break;
 		case cJSON_Number:
 			type = ast_strdupa("number");
-			if (thisobject->valuedouble > thisobject->valueint)
+			if (thisobject->valuedouble != thisobject->valueint)
 				ast_asprintf(&value, "%f", thisobject->valuedouble);
 			else
 				ast_asprintf(&value, "%d", thisobject->valueint);
@@ -461,7 +461,7 @@ static int jsonvariables_exec(struct ast_channel *chan, const char *data) {
 				case cJSON_True: pbx_builtin_setvar_helper(chan, nvp->string, "1"); break;
 				case cJSON_NULL: pbx_builtin_setvar_helper(chan, nvp->string, ""); break;
 				case cJSON_Number:
-					if (nvp->valuedouble > nvp->valueint)
+					if (nvp->valuedouble != nvp->valueint)
 						ast_asprintf(&num, "%f", nvp->valuedouble);
 					else
 						ast_asprintf(&num, "%d", nvp->valueint);
