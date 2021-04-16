@@ -1,5 +1,36 @@
+Новый вариант 
+16 смотрит на welltime/16-mcn
+16-mcn смотрит на welltime/16-mcn
+
+
+git checkout 16
+git pull asterisk 16
+git push welltime 16
+git checkout 16-mcn
+
+Ребейзим, решаем конфликты
+
+git checkout 16-mcn
+git rebase 16
+git push -f welltime 16-mcn
+
+git fetch --all
+Делаем ветку для нужной версии
+git checkout -b 16.17 asterisk/16.17
+git checkout -b 16.17-mcn
+Применяем все коммит между 16 и 16-mcn, иногда могут быть конфликты, которые нужно решить.
+git cherry-pick 16..16-mcn
+
+Сохраняем на всякий случай
+git push welltime 16.17-mcn
+
+git diff 16.17 16.17-mcn > asterisk-16-mcn.patch
+
+
+Старый вариант
+
 Пример изготовления патча
-Должен быть подключен оригинальный (origin) и наш (welltime) репозитории.
+Должен быть подключен оригинальный (asterisk) и наш (welltime) репозитории.
 Забираем обновления.
 git fetch --all
 
@@ -10,7 +41,7 @@ git checkout -b 16-mcn welltime/16-mcn
 Запоминаем последний коммит 183bdb5dcf70a82a3b7a619cf497585b10a6d3f1
 
 Делаем ветку нужной версии локально:
-git checkout -b 16.10 origin/16.10
+git checkout -b 16.10 asterisk/16.10
 Делаем новую ветку для патчей:
 git checkout -b 16.10-mcn
 Накатываем все коммиты между 16-mcn-base и веткой с коммитами 16-mcn
