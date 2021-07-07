@@ -4998,7 +4998,7 @@ static void rna(int rnatime, struct queue_ent *qe, struct ast_channel *peer, cha
 	queue_publish_multi_channel_blob(qe->chan, peer, queue_agent_ringnoanswer_type(), blob, NULL);
 
 	ast_queue_log(qe->parent->name, ast_channel_uniqueid(qe->chan), membername, "RINGNOANSWER", "%d", rnatime);
-	if (qe->parent->autopause != QUEUE_AUTOPAUSE_OFF && autopause) {
+	if (qe->parent->autopause != QUEUE_AUTOPAUSE_OFF && autopause && rnatime <= 1000) {
 		if (qe->parent->autopausedelay > 0) {
 			struct member *mem;
 			ao2_lock(qe->parent);
